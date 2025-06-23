@@ -11,7 +11,6 @@ export const createCustomer = async (req, res) => {
         }
         const newCustomer = await db.Customer.create({ name, email, phone });
         return res.status(201).json(newCustomer);
-        console.log("Customer created successfully:", newCustomer);
     } catch (error) {
         console.error("Error creating customer:", error);
         return res.status(500).json({ message: "Internal server error" });
