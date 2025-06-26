@@ -20,6 +20,30 @@ function App() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchCustomers = async () => {
+    try {
+      const customersResponse = await api.customers.getAll();
+      if (Array.isArray(customersResponse)) {
+        setCustomers(customersResponse);
+        if (customersResponse.length > 0 && !selectedCustomerId) {
+          setSelectedCustomerId(customersResponse[0].id);
+        }
+      } else {
+        setCustomers([]);
+        setMessage({
+          text: 'No customers available. Please add a customer to proceed.',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      setMessage({
+        text: error instanceof Error ? error.message : 'Failed to fetch customers',
+        type: 'error'
+      });
+    }
+  };
+
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -56,7 +80,7 @@ function App() {
     };
 
     fetchInitialData();
-  }, []);
+  }, [selectedCustomerId]);
 
   const handleRentCar = async (carId: number) => {
     if (!selectedCustomerId) {
@@ -142,6 +166,7 @@ function App() {
               customers={customers}
               selectedCustomerId={selectedCustomerId}
               onSelectCustomer={setSelectedCustomerId}
+              onCustomerAdded={fetchCustomers}
             />
             <div className="mt-6">
               {activeTab === 'cars' ? (

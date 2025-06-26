@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-// // Development
+// //Development
 // const API_BASE_URL = 'http://localhost:3000/api';
-// Production
-const API_BASE_URL = 'https://car-rental-service-ix4n.onrender.com';
+
+// // Production
+const API_BASE_URL = 'https://car-rental-service-ix4n.onrender.com/api';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -99,6 +100,7 @@ interface ApiService {
   customers: {
     getAll: () => Promise<Customer[]>;
     getOne: (id: number) => Promise<Customer>;
+    create: (customer: Omit<Customer, 'id'>) => Promise<Customer>;
   };
   rentals: {
     getAll: () => Promise<Rental[]>;
@@ -118,7 +120,8 @@ const api: ApiService = {
 
   customers: {
     getAll: () => axiosInstance.get('/customers'),
-    getOne: (id: number) => axiosInstance.get(`/customers/${id}`),
+    getOne: (id) => axiosInstance.get(`/customers/${id}`),
+    create: (customer) => axiosInstance.post('/customers', customer)
   },
 
   rentals: {

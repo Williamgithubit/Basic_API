@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import AddCustomerForm from './AddCustomerForm';
 
 interface Customer {
   id: number;
@@ -11,28 +12,60 @@ interface CustomerSelectProps {
   customers: Customer[];
   selectedCustomerId: number | null;
   onSelectCustomer: (customerId: number) => void;
+  onCustomerAdded: () => void;
 }
 
 const CustomerSelect: React.FC<CustomerSelectProps> = ({
   customers,
   selectedCustomerId,
   onSelectCustomer,
+  onCustomerAdded,
 }) => {
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  if (showAddForm) {
+    return (
+      <AddCustomerForm
+        onCustomerAdded={() => {
+          setShowAddForm(false);
+          onCustomerAdded();
+        }}
+        onCancel={() => setShowAddForm(false)}
+      />
+    );
+  }
+
   if (customers.length === 0) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-        <p className="text-yellow-800 text-sm">
-          No customers found. Please add a customer to proceed with rentals.
-        </p>
+        <div className="flex justify-between items-center">
+          <p className="text-yellow-800 text-sm">
+            No customers found. Please add a customer to proceed.
+          </p>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          >
+            Add Customer
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white shadow-md rounded-lg p-4 mb-6">
-      <label htmlFor="customer" className="block text-sm font-medium text-gray-700 mb-2">
-        Select Customer
-      </label>
+      <div className="flex justify-between items-center mb-4">
+        <label htmlFor="customer" className="block text-sm font-medium text-gray-700">
+          Select Customer
+        </label>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="px-3 py-1 text-sm text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors"
+        >
+          + Add New
+        </button>
+      </div>
       <div className="relative">
         <select
           id="customer"
