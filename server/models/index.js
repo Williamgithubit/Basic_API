@@ -48,16 +48,15 @@ for (const file of files) {
   console.log(`Loaded Model: ${model.name}`);
 }
 
-// Set up associations if they exist
-for (const modelName of Object.keys(db)) {
+// Set up associations
+Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
+    console.log(`Set up associations for: ${modelName}`);
   }
-
-}
-
+});
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-export default db;
+export default db;

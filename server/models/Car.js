@@ -8,35 +8,42 @@ const Car = (sequelize, DataTypes) => {
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: false, // Car name is required
+      allowNull: false,
     },
     model: {
       type: DataTypes.STRING,
-      allowNull: false, // Model is required
+      allowNull: false,
     },
     year: {
       type: DataTypes.INTEGER,
-      allowNull: false, // Year is required
+      allowNull: false,
       validate: {
-        min: 1900,      // Ensures year is realistic
-        max: new Date().getFullYear() + 1, // Allows current/future year
+        min: 1900,
+        max: new Date().getFullYear() + 1,
       },
     },
     rentalPricePerDay: {
-      type: DataTypes.DECIMAL(10, 2), // Stores prices like 99.99
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
-        min: 0, // Prevents negative prices
+        min: 0,
       },
     },
     isAvailable: {
       type: DataTypes.BOOLEAN,
-      defaultValue: true, // Defaults to 'true' if not provided
+      allowNull: false,
+      defaultValue: true,
     },
+    imageUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'https://via.placeholder.com/200x150?text=Car',
+      field: 'image_url' // THIS IS CRITICAL
+    }
   }, {
-    timestamps: false,   // Disables createdAt/updatedAt
-    tableName: 'cars',   // Explicit table name (optional)
-    underscored: true,  // Uses snake_case in DB (e.g., rental_price_per_day)
+    timestamps: false,
+    tableName: 'cars',
+    underscored: true
   });
 
   Car.associate = (models) => {

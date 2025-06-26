@@ -30,7 +30,7 @@ app.use("/api/rentals", rentalRouter);
 app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
     try {
-        await db.sequelize.authenticate();
+        await db.sequelize.sync(); // Use force: true only for development to reset the database
         console.log('✅ Database connected successfully');
     } catch (error) {
         console.error('❌ Unable to connect to the database:', error);

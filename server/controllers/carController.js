@@ -5,6 +5,7 @@ export const createCar = async (req, res) => {
     const { name, model, year, rentalPricePerDay } = req.body;
     
     try {
+        console.log("BODY RECEIVED:", req.body); // Log here
         const newCar = await db.Car.create({
             name,
             model,
@@ -22,7 +23,9 @@ export const createCar = async (req, res) => {
 // List all cars
 export const getCars = async (req, res) => {
     try {
-        const cars = await db.Car.findAll();
+        const cars = await db.Car.findAll({
+            attributes: ['id', 'name', 'model', 'year', 'rentalPricePerDay', 'isAvailable']
+        });
         return res.status(200).json(cars);
     } catch (error) {
         console.error("Error fetching cars:", error);

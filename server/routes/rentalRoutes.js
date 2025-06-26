@@ -1,18 +1,24 @@
 import express from 'express';
-import * as rentalController from "../controllers/rentalController.js";
+import { createRental, getRental, getStats, getActive, deleteRental, getRentals } from '../controllers/rentalController.js';
 
 const rentalRouter = express.Router();
 
-// Rent a car
-rentalRouter.post("/", rentalController.createRental);
+// Create a new rental
+rentalRouter.post("/", createRental);
 
-// View all rentals
-rentalRouter.get("/", rentalController.getRentals);
+// Get rental statistics
+rentalRouter.get("/stats", getStats);
 
-// View a specific rental
-rentalRouter.get("/:id", rentalController.getRental);
+// Get active rentals
+rentalRouter.get("/active", getActive);
+
+// Get specific rental
+rentalRouter.get("/:id", getRental);
 
 // Cancel a rental
-rentalRouter.delete("/:id", rentalController.deleteRental);
+rentalRouter.delete("/:id", deleteRental);
+
+// Get all rentals (with optional date range)
+rentalRouter.get("/", getRentals);
 
 export default rentalRouter;

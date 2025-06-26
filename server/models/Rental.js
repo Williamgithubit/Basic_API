@@ -1,4 +1,4 @@
-const Rental = (sequelize, DataTypes) => {
+const RentalModel = (sequelize, DataTypes) => {
   const Rental = sequelize.define("Rental", {
     id: {
       type: DataTypes.INTEGER,
@@ -25,11 +25,18 @@ const Rental = (sequelize, DataTypes) => {
       onDelete: 'CASCADE', // Optional: Delete rental if customer is deleted
     },
     startDate: {
-      type: DataTypes.DATEONLY, // Stores date without time (e.g., '2025-06-20')
+      type: DataTypes.DATEONLY,
       allowNull: false,
       validate: {
         isDate: true,
-        isAfter: new Date().toISOString().split('T')[0], // Future date
+        isFutureDate(value) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const startDate = new Date(value);
+          if (startDate <= today) {
+            throw new Error('Start date must be a future date.');
+          }
+        }
       },
     },
     endDate: {
@@ -68,4 +75,4 @@ const Rental = (sequelize, DataTypes) => {
   return Rental;
 };
 
-export default Rental;
+export default RentalModel;

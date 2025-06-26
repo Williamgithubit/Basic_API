@@ -1,6 +1,141 @@
 import db from "../models/index.js";
+import { Op } from 'sequelize';
+
+// Using db.Rental directly for better clarity
 
 // Rent a car
+export const getStats = async (req, res) => {
+  try {
+    const totalRentals = await db.Rental.count();
+    const activeRentals = await db.Rental.count({
+      where: {
+        endDate: { [Op.gte]: new Date() }
+      }
+    });
+
+    const totalRevenue = await db.Rental.sum('totalCost');
+
+    const popularCars = await db.Rental.findAll({
+      attributes: [
+        'carId',
+        [db.sequelize.fn('COUNT', 'carId'), 'rentCount']
+      ],
+      include: [{
+        model: db.Car,
+        as: 'Car',
+        attributes: ['id', 'name', 'model', 'imageUrl', 'rentalPricePerDay']
+      }],
+      group: ['carId', 'Car.id', 'Car.name', 'Car.model'],
+      order: [[db.sequelize.fn('COUNT', 'carId'), 'DESC']],
+      limit: 5
+    });
+
+    res.json({
+      totalRentals,
+      activeRentals,
+      totalRevenue: totalRevenue || 0,
+      popularCars: popularCars.map(rental => ({
+        carId: rental.carId,
+        name: rental.Car.name,
+        model: rental.Car.model,
+        rentCount: parseInt(rental.get('rentCount'))
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getActive = async (req, res) => {
+  try {
+    const rentals = await db.Rental.findAll({
+      where: {
+        endDate: { [Op.gte]: new Date() }
+      },
+      include: [
+        { 
+          model: db.Car,
+          as: 'Car',
+          attributes: ['id', 'name', 'model', 'rentalPricePerDay']
+        },
+        {
+          model: db.Customer,
+          as: 'Customer',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['endDate', 'ASC']]
+    });
+
+    res.json(rentals);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getRentals = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    // If date range is provided, filter by dates
+    if (startDate && endDate) {
+      const rentals = await db.Rental.findAll({
+        where: {
+          [Op.or]: [
+            {
+              startDate: {
+                [Op.between]: [startDate, endDate]
+              }
+            },
+            {
+              endDate: {
+                [Op.between]: [startDate, endDate]
+              }
+            }
+          ]
+        },
+        include: [
+          { 
+            model: db.Car,
+            as: 'Car',
+            attributes: ['id', 'name', 'model', 'rentalPricePerDay']
+          },
+          {
+            model: db.Customer,
+            as: 'Customer',
+            attributes: ['id', 'name', 'email']
+          }
+        ],
+        order: [['startDate', 'DESC']]
+      });
+      return res.json(rentals);
+    }
+
+    // Otherwise, return all rentals
+    const rentals = await db.Rental.findAll({
+      include: [
+        { 
+          model: db.Car,
+          as: 'Car',
+          attributes: ['id', 'name', 'model', 'rentalPricePerDay']
+        },
+        {
+          model: db.Customer,
+          as: 'Customer',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['startDate', 'DESC']]
+    });
+    res.json(rentals);
+  } catch (error) {
+    console.error('Error getting rentals:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
 export const createRental = async (req, res) => {
     const { carId, customerId, startDate, endDate } = req.body;
 
@@ -45,21 +180,7 @@ export const createRental = async (req, res) => {
     }
 };
 
-// View all rentals
-export const getRentals = async (req, res) => {
-    try {
-        const rentals = await db.Rental.findAll({
-            include: [
-                { model: db.Car, as: 'Car' },
-                { model: db.Customer, as: 'Customer' }
-            ]
-        });
-        return res.status(200).json(rentals);
-    } catch (error) {
-        console.error("Error fetching rentals:", error);
-        return res.status(500).json({ message: "Internal server error" });
-    }
-};
+
 
 // View a specific rental
 export const getRental = async (req, res) => {
@@ -68,8 +189,16 @@ export const getRental = async (req, res) => {
     try {
         const rental = await db.Rental.findByPk(id, {
             include: [
-                { model: db.Car, as: 'Car' },
-                { model: db.Customer, as: 'Customer' }
+                { 
+                    model: db.Car,
+                    as: 'Car',
+                    attributes: ['id', 'name', 'model', 'rentalPricePerDay']
+                },
+                {
+                    model: db.Customer,
+                    as: 'Customer',
+                    attributes: ['id', 'name', 'email']
+                }
             ]
         });
         if (!rental) {
@@ -99,7 +228,7 @@ export const deleteRental = async (req, res) => {
         }
 
         await rental.destroy();
-        return res.status(204).send();
+        return res.status(200).json({ message: "Rental cancelled successfully" });
     } catch (error) {
         console.error("Error canceling rental:", error);
         return res.status(500).json({ message: "Internal server error" });

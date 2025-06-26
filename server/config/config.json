@@ -13,7 +13,7 @@
     "host": "127.0.0.1",
     "dialect": "mysql"
   },
-  "production": {
+"production": {
     "username": "tealo_car_rental",
     "password": "2MGf0WClQMCE8vwJ81SUv6oYUWIVcQWZ",
     "database": "car_rental_service_dxh2",
