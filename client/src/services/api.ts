@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+// // Development
+// const API_BASE_URL = 'http://localhost:3000/api';
+// Production
+const API_BASE_URL = 'https://car-rental-service-ix4n.onrender.com';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -38,7 +41,7 @@ export interface Car {
   year: number;
   rentalPricePerDay: number;
   isAvailable: boolean;
-  imageUrl: string;
+  imageUrl?: string; // Make imageUrl optional since it might not be present
 }
 
 export interface DashboardStats {
@@ -60,7 +63,12 @@ export interface Rental {
   startDate: string;
   endDate: string;
   totalCost: number;
-  car?: Car;
+  car?: {
+    id: number;
+    name: string;
+    model: string;
+    rentalPricePerDay: number;
+  };
   customer?: {
     id: number;
     name: string;

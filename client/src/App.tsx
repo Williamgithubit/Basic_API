@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 import CarList from './components/CarList';
 import RentalList from './components/RentalList';
 import CustomerSelect from './components/CustomerSelect';
-import api from './services/api';
+import api, { type Rental } from './services/api';
 
 interface Customer {
   id: number;
@@ -17,17 +17,21 @@ function App() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [rentals, setRentals] = useState<Rental[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCustomers = async () => {
+    const fetchInitialData = async () => {
       try {
-        const response = await api.customers.getAll();
-        if (Array.isArray(response)) {
-          setCustomers(response);
-          // Only set the first customer if no customer is selected and we have customers
-          if (response.length > 0 && !selectedCustomerId) {
-            setSelectedCustomerId(response[0].id);
+        const [customersResponse, rentalsResponse] = await Promise.all([
+          api.customers.getAll(),
+          api.rentals.getAll()
+        ]);
+
+        if (Array.isArray(customersResponse)) {
+          setCustomers(customersResponse);
+          if (customersResponse.length > 0 && !selectedCustomerId) {
+            setSelectedCustomerId(customersResponse[0].id);
           }
         } else {
           setCustomers([]);
@@ -36,11 +40,14 @@ function App() {
             type: 'error'
           });
         }
+
+        if (Array.isArray(rentalsResponse)) {
+          setRentals(rentalsResponse);
+        }
       } catch (error) {
-        console.error('Error fetching customers:', error);
-        setCustomers([]);
+        console.error('Error fetching initial data:', error);
         setMessage({
-          text: error instanceof Error ? error.message : 'Failed to fetch customers',
+          text: error instanceof Error ? error.message : 'Failed to fetch data',
           type: 'error'
         });
       } finally {
@@ -48,8 +55,8 @@ function App() {
       }
     };
 
-    fetchCustomers();
-  }, []); // Remove selectedCustomerId from dependency array to prevent infinite loop
+    fetchInitialData();
+  }, []);
 
   const handleRentCar = async (carId: number) => {
     if (!selectedCustomerId) {
@@ -83,8 +90,10 @@ function App() {
       };
 
       console.log('Creating rental with data:', rentalData);
-      await api.rentals.create(rentalData);
-
+      const newRental = await api.rentals.create(rentalData);
+      
+      // Update rentals list with the new rental
+      setRentals(prevRentals => [...prevRentals, newRental]);
       setMessage({ text: 'Car rented successfully', type: 'success' });
       setActiveTab('rentals');
     } catch (error) {
@@ -97,8 +106,11 @@ function App() {
 
   const handleCancelRental = async (rentalId: number) => {
     try {
-      await api.rentals.cancel(rentalId);
+      await api.rentals.delete(rentalId);
       setMessage({ text: 'Rental cancelled successfully', type: 'success' });
+      // Refresh the rentals list
+      const updatedRentals = await api.rentals.getAll();
+      setRentals(updatedRentals);
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : 'Failed to cancel rental',
@@ -110,41 +122,39 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
-      
       <div className="container mx-auto px-4 py-8">
         {message && (
           <div
-            className={`mb-6 p-4 rounded-lg flex justify-between items-center ${message.type === 'success' 
-              ? 'bg-green-100 text-green-700' 
-              : 'bg-red-100 text-red-700'}`}
+            className={`mb-4 p-4 rounded ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+            role="alert"
           >
-            <span>{message.text}</span>
-            <button
-              onClick={() => setMessage(null)}
-              className="text-sm hover:text-gray-600"
-            >
-              ×
-            </button>
+            {message.text}
           </div>
         )}
 
         {isLoading ? (
-          <div className="mb-6 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="text-center">
+            <p>Loading...</p>
           </div>
         ) : (
-          <CustomerSelect
-            customers={customers}
-            selectedCustomerId={selectedCustomerId}
-            onSelectCustomer={setSelectedCustomerId}
-          />
-        )}
-
-        {activeTab === 'cars' && (
-          <CarList onRentCar={handleRentCar} />
-        )}
-        {activeTab === 'rentals' && (
-          <RentalList onCancelRental={handleCancelRental} selectedCustomerId={selectedCustomerId} />
+          <>
+            <CustomerSelect
+              customers={customers}
+              selectedCustomerId={selectedCustomerId}
+              onSelectCustomer={setSelectedCustomerId}
+            />
+            <div className="mt-6">
+              {activeTab === 'cars' ? (
+                <CarList onRentCar={handleRentCar} />
+              ) : (
+                <RentalList
+                  rentals={rentals}
+                  onCancelRental={handleCancelRental}
+                  selectedCustomerId={selectedCustomerId}
+                />
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
