@@ -48,8 +48,15 @@ export const getStats = async (req, res) => {
 
 export const getActive = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const userId = req.user.id;
+
     const rentals = await db.Rental.findAll({
       where: {
+        customerId: userId,
         endDate: { [Op.gte]: new Date() }
       },
       include: [
@@ -215,10 +222,27 @@ export const getRental = async (req, res) => {
 export const deleteRental = async (req, res) => {
     const { id } = req.params;
 
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
     try {
-        const rental = await db.Rental.findByPk(id);
+        const rental = await db.Rental.findOne({
+            where: {
+                id: id,
+                customerId: req.user.id
+            }
+        });
+
         if (!rental) {
-            return res.status(404).json({ message: "Rental not found" });
+            return res.status(404).json({ message: "Rental not found or you don't have permission to cancel it" });
+        }
+
+        // Check if rental is already completed
+        if (new Date(rental.endDate) < new Date()) {
+            return res.status(400).json({ 
+                message: "Cannot cancel a completed rental" 
+            });
         }
 
         // Get the car and update its availability

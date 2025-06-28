@@ -1,21 +1,16 @@
 import express from 'express';
 import * as carController from "../controllers/carController.js";
+import { verifyToken } from '../controllers/authController.js';
 
 const carRouter = express.Router();
 
-// Add new car
-carRouter.post("/", carController.createCar);
-
-// List all cars
+// Public routes - anyone can view cars
 carRouter.get("/", carController.getCars);
-
-// Get single car details
 carRouter.get("/:id", carController.getCar);
 
-// Update car info
-carRouter.put("/:id", carController.updateCar);
-
-// Remove a car
-carRouter.delete("/:id", carController.deleteCar);
+// Protected routes - only admin can modify cars
+carRouter.post("/", carController.createCar);
+carRouter.put("/:id", verifyToken, carController.updateCar);
+carRouter.delete("/:id", verifyToken, carController.deleteCar);
 
 export default carRouter;

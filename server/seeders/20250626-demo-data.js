@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = {
+export default {
   async up(queryInterface, Sequelize) {
     // Add test customers
     await queryInterface.bulkInsert('customers', [

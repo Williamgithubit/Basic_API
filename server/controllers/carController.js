@@ -2,15 +2,15 @@ import db from "../models/index.js";
 
 // Add new car
 export const createCar = async (req, res) => {
-    const { name, model, year, rentalPricePerDay } = req.body;
-    
+    const { name, model, year, rentalPricePerDay, imageUrl  } = req.body;
     try {
-        console.log("BODY RECEIVED:", req.body); // Log here
+        // console.log("BODY RECEIVED:", req.body); // Log here
         const newCar = await db.Car.create({
             name,
             model,
             year,
             rentalPricePerDay,
+            imageUrl,
             isAvailable: true
         });
         return res.status(201).json(newCar);
@@ -24,7 +24,7 @@ export const createCar = async (req, res) => {
 export const getCars = async (req, res) => {
     try {
         const cars = await db.Car.findAll({
-            attributes: ['id', 'name', 'model', 'year', 'rentalPricePerDay', 'isAvailable']
+            attributes: ['id', 'name', 'model', 'year', 'rentalPricePerDay','imageUrl', 'isAvailable']
         });
         return res.status(200).json(cars);
     } catch (error) {
@@ -52,7 +52,7 @@ export const getCar = async (req, res) => {
 // Update car info
 export const updateCar = async (req, res) => {
     const { id } = req.params;
-    const { name, model, year, rentalPricePerDay, isAvailable } = req.body;
+    const { name, model, year, rentalPricePerDay, imageUrl, isAvailable } = req.body;
 
     try {
         const car = await db.Car.findByPk(id);
@@ -65,6 +65,7 @@ export const updateCar = async (req, res) => {
             model,
             year,
             rentalPricePerDay,
+            imageUrl,
             isAvailable
         });
         return res.status(200).json(car);

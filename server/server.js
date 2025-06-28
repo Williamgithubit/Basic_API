@@ -2,9 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import db from './models/index.js';
-import customerRouter from "./routes/customerRoutes.js";
-import carRouter from "./routes/carRoutes.js";
-import rentalRouter from "./routes/rentalRoutes.js";
+import customerRouter from './routes/customerRoutes.js';
+import carRouter from './routes/carRoutes.js';
+import rentalRouter from './routes/rentalRoutes.js';
+import authRouter from './routes/auth.js';
+import { verifyToken } from './controllers/authController.js';
+
 dotenv.config();
 
 
@@ -16,21 +19,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors())
 
-//Routes
-app.get('/', (req, res) => {
-    res.send('Welcome to Basis API!, Routes is on test');
-});
+// Public routes
+app.use('/api/auth', authRouter);
+app.use('/api/cars', carRouter); // Car routes handle their own auth
 
-// API Routes
-app.use("/api/customers", customerRouter);
-app.use("/api/cars", carRouter);
-app.use("/api/rentals", rentalRouter);
+// Protected routes
+app.use('/api/customers', verifyToken, customerRouter);
+app.use('/api/rentals', (req, res, next) => {
+    // Skip auth for GET requests to /api/rentals/active
+    if (req.method === 'GET' && req.path === '/active') {
+        next();
+    } else {
+        verifyToken(req, res, next);
+    }
+}, rentalRouter);
+
+app.get('/', (req, res) => {
+    res.send('Welcome to Car Rental API');
+});
 
 
 app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
     try {
-        await db.sequelize.sync(); // Use force: true only for development to reset the database
+        await db.sequelize.sync(); // Removed force: true to prevent database reset
         console.log('✅ Database connected successfully');
     } catch (error) {
         console.error('❌ Unable to connect to the database:', error);

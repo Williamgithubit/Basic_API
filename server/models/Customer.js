@@ -1,3 +1,5 @@
+import bcrypt from 'bcryptjs';
+
 const Customer = (sequelize, DataTypes) => {
   const Customer = sequelize.define("Customer", {
     id: {
@@ -18,6 +20,10 @@ const Customer = (sequelize, DataTypes) => {
         isEmail: true, // Validates email format (e.g., 'test@example.com')
       },
     },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     phone: {
       type: DataTypes.STRING,
       allowNull: false, // Phone is required
@@ -27,7 +33,7 @@ const Customer = (sequelize, DataTypes) => {
       },
     },
   }, {
-    timestamps: false,  // Disables createdAt/updatedAt fields
+    timestamps: true,  // Enables createdAt/updatedAt fields
     tableName: 'customers', // Explicit table name (optional)
     underscored: true,  // Uses snake_case in DB (e.g., 'phone_number' if field was phoneNumber)
     hooks: {
@@ -44,6 +50,7 @@ const Customer = (sequelize, DataTypes) => {
     }
   });
 
+  // Instance methods
   Customer.prototype.validatePassword = async function(password) {
     return bcrypt.compare(password, this.password);
   };
