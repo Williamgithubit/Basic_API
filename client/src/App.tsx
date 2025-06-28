@@ -1,143 +1,68 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import api, { type Rental } from './services/api';
 import Navbar from './components/Navbar';
 import CarList from './components/CarList';
 import RentalList from './components/RentalList';
-import CustomerSelect from './components/CustomerSelect';
-import api, { type Rental } from './services/api';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-}
-
-function App() {
+const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<'cars' | 'rentals'>('cars');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  const fetchCustomers = async () => {
-    try {
-      const customersResponse = await api.customers.getAll();
-      if (Array.isArray(customersResponse)) {
-        setCustomers(customersResponse);
-        if (customersResponse.length > 0 && !selectedCustomerId) {
-          setSelectedCustomerId(customersResponse[0].id);
-        }
-      } else {
-        setCustomers([]);
-        setMessage({
-          text: 'No customers available. Please add a customer to proceed.',
-          type: 'error'
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching customers:', error);
-      setMessage({
-        text: error instanceof Error ? error.message : 'Failed to fetch customers',
-        type: 'error'
-      });
-    }
-  };
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchData = async () => {
       try {
-        const [customersResponse, rentalsResponse] = await Promise.all([
-          api.customers.getAll(),
-          api.rentals.getAll()
-        ]);
-
-        if (Array.isArray(customersResponse)) {
-          setCustomers(customersResponse);
-          if (customersResponse.length > 0 && !selectedCustomerId) {
-            setSelectedCustomerId(customersResponse[0].id);
-          }
-        } else {
-          setCustomers([]);
-          setMessage({
-            text: 'No customers available. Please add a customer to proceed.',
-            type: 'error'
-          });
-        }
-
-        if (Array.isArray(rentalsResponse)) {
-          setRentals(rentalsResponse);
-        }
+        setIsLoading(true);
+        const rentalsResponse = await api.rentals.getAll();
+        setRentals(rentalsResponse);
       } catch (error) {
-        console.error('Error fetching initial data:', error);
         setMessage({
-          text: error instanceof Error ? error.message : 'Failed to fetch data',
+          text: 'Error fetching data',
           type: 'error'
         });
       } finally {
         setIsLoading(false);
       }
     };
+    fetchData();
+  }, []);
 
-    fetchInitialData();
-  }, [selectedCustomerId]);
-
-  const handleRentCar = async (carId: number) => {
-    if (!selectedCustomerId) {
-      setMessage({ text: 'Please select a customer first', type: 'error' });
-      return;
-    }
-
+  const handleSignOut = async () => {
     try {
-      // Get current date in UTC
-      const now = new Date();
-      
-      // Set start date to next day in UTC
-      const startDate = new Date(Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate() + 1
-      ));
-      
-      // Set end date to 7 days after start date
-      const endDate = new Date(Date.UTC(
-        startDate.getUTCFullYear(),
-        startDate.getUTCMonth(),
-        startDate.getUTCDate() + 7
-      ));
-
-      const rentalData = {
-        carId,
-        customerId: selectedCustomerId,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
-      };
-
-      console.log('Creating rental with data:', rentalData);
-      const newRental = await api.rentals.create(rentalData);
-      
-      // Update rentals list with the new rental
-      setRentals(prevRentals => [...prevRentals, newRental]);
-      setMessage({ text: 'Car rented successfully', type: 'success' });
-      setActiveTab('rentals');
+      await logout();
+      navigate('/login');
     } catch (error) {
       setMessage({
-        text: error instanceof Error ? error.message : 'Failed to rent car',
+        text: 'Error signing out',
         type: 'error'
       });
     }
   };
 
-  const handleCancelRental = async (rentalId: number) => {
+  const handleRentalCreated = async (rental: Rental) => {
+    setRentals(prev => [...prev, rental]);
+    setActiveTab('rentals');
+  };
+
+  const handleRentalDeleted = async (rentalId: number) => {
     try {
       await api.rentals.delete(rentalId);
-      setMessage({ text: 'Rental cancelled successfully', type: 'success' });
-      // Refresh the rentals list
-      const updatedRentals = await api.rentals.getAll();
-      setRentals(updatedRentals);
+      setRentals(prev => prev.filter(rental => rental.id !== rentalId));
+      setMessage({
+        text: 'Rental deleted successfully',
+        type: 'success'
+      });
     } catch (error) {
       setMessage({
-        text: error instanceof Error ? error.message : 'Failed to cancel rental',
+        text: 'Failed to delete rental',
         type: 'error'
       });
     }
@@ -147,43 +72,62 @@ function App() {
     <div className="min-h-screen bg-gray-100">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-xl font-semibold">
+            Welcome, {user?.name}
+          </div>
+          {/* <button
+            onClick={handleSignOut}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded cursor-pointer"
+          >
+            Sign Out
+          </button> */}
+        </div>
         {message && (
           <div
-            className={`mb-4 p-4 rounded ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
-            role="alert"
+            className={`p-4 mb-4 rounded ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
           >
             {message.text}
           </div>
         )}
-
-        {isLoading ? (
-          <div className="text-center">
-            <p>Loading...</p>
-          </div>
+        {activeTab === 'cars' ? (
+          <CarList
+            onRentalCreated={handleRentalCreated}
+            setMessage={setMessage}
+          />
         ) : (
-          <>
-            <CustomerSelect
-              customers={customers}
-              selectedCustomerId={selectedCustomerId}
-              onSelectCustomer={setSelectedCustomerId}
-              onCustomerAdded={fetchCustomers}
-            />
-            <div className="mt-6">
-              {activeTab === 'cars' ? (
-                <CarList onRentCar={handleRentCar} />
-              ) : (
-                <RentalList
-                  rentals={rentals}
-                  onCancelRental={handleCancelRental}
-                  selectedCustomerId={selectedCustomerId}
-                />
-              )}
-            </div>
-          </>
+          <RentalList
+            rentals={rentals}
+            onRentalDeleted={handleRentalDeleted}
+            setMessage={setMessage}
+            isLoading={isLoading}
+          />
         )}
       </div>
     </div>
   );
-}
+};
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+};
 
 export default App;

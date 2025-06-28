@@ -14,6 +14,14 @@ const axiosInstance = axios.create({
   },
 });
 
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete axiosInstance.defaults.headers.common['Authorization'];
+  }
+};
+
 // Add response interceptor for error handling
 axiosInstance.interceptors.response.use(
   (response: any) => {
@@ -92,7 +100,22 @@ export interface Customer {
   phone: string;
 }
 
+interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+interface SignupData extends AuthCredentials {
+  name: string;
+  phone: string;
+}
+
 interface ApiService {
+  auth: {
+    login: (credentials: AuthCredentials) => Promise<{ token: string; customer: Customer }>;
+    signup: (data: SignupData) => Promise<{ token: string; customer: Customer }>;
+  };
+  setAuthToken: (token: string | null) => void;
   cars: {
     getAll: () => Promise<Car[]>;
     getOne: (id: number) => Promise<Car>;
@@ -112,10 +135,29 @@ interface ApiService {
   };
 }
 
+interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+interface SignupData extends AuthCredentials {
+  name: string;
+  phone: string;
+}
+
 const api: ApiService = {
+  auth: {
+    login: (credentials: AuthCredentials) => 
+      axiosInstance.post('/auth/login', credentials),
+    signup: (data: SignupData) => 
+      axiosInstance.post('/auth/signup', data),
+  },
+  setAuthToken,
   cars: {
     getAll: () => axiosInstance.get('/cars'),
     getOne: (id: number) => axiosInstance.get(`/cars/${id}`),
+    // create: (car: { name: string; model: string; year: number; rentalPricePerDay: number }) => 
+    //   axiosInstance.post('/cars', car),
   },
 
   customers: {

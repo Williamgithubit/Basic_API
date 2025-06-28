@@ -11,15 +11,13 @@ interface Customer {
 interface CustomerSelectProps {
   customers: Customer[];
   selectedCustomerId: number | null;
-  onSelectCustomer: (customerId: number) => void;
-  onCustomerAdded: () => void;
+  onCustomerSelect: (customerId: number | null) => void;
 }
 
 const CustomerSelect: React.FC<CustomerSelectProps> = ({
   customers,
   selectedCustomerId,
-  onSelectCustomer,
-  onCustomerAdded,
+  onCustomerSelect,
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -70,7 +68,7 @@ const CustomerSelect: React.FC<CustomerSelectProps> = ({
         <select
           id="customer"
           value={selectedCustomerId || ''}
-          onChange={(e) => onSelectCustomer(Number(e.target.value))}
+          onChange={(e) => onCustomerSelect(Number(e.target.value))}
           className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 appearance-none"
         >
           <option value="">Select a customer</option>
