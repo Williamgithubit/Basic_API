@@ -14,8 +14,15 @@ const Dashboard = () => {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Clear message after 5 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,17 +42,7 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  const handleSignOut = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      setMessage({
-        text: 'Error signing out',
-        type: 'error'
-      });
-    }
-  };
+
 
   const handleRentalCreated = async (rental: Rental) => {
     setRentals(prev => [...prev, rental]);
@@ -76,12 +73,6 @@ const Dashboard = () => {
           <div className="text-xl font-semibold">
             Welcome, {user?.name}
           </div>
-          {/* <button
-            onClick={handleSignOut}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded cursor-pointer"
-          >
-            Sign Out
-          </button> */}
         </div>
         {message && (
           <div
