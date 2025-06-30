@@ -10,7 +10,7 @@ carRouter.get("/:id", carController.getCar);
 
 // Protected routes - only admin can modify cars
 carRouter.post("/", carController.createCar);
-carRouter.put("/:id", verifyToken, carController.updateCar);
+carRouter.put("/:id", carController.updateCar);
 carRouter.delete("/:id", verifyToken, carController.deleteCar);
 
 export default carRouter;
