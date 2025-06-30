@@ -68,12 +68,6 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                <Link 
-                  to="/dashboard" 
-                  className={`px-3 py-2 rounded-md text-sm font-medium cursor-pointer ${isActive('/dashboard') ? 'bg-blue-700' : 'hover:bg-blue-700'}`}
-                >
-                  Dashboard
-                </Link>
                 <button
                   onClick={() => onTabChange('cars')}
                   className={`px-3 py-2 rounded-md text-sm font-medium cursor-pointer ${activeTab === 'cars' ? 'bg-blue-700' : 'hover:bg-blue-700'}`}
@@ -152,13 +146,6 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
             <div className="px-4 pt-2 pb-3 space-y-1">
               {isAuthenticated ? (
                 <>
-                  <Link
-                    to="/dashboard"
-                    onClick={closeMenu}
-                    className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/dashboard') ? 'bg-blue-700' : 'hover:bg-blue-700'}`}
-                  >
-                    Dashboard
-                  </Link>
                   <button
                     onClick={() => {
                       onTabChange('cars');

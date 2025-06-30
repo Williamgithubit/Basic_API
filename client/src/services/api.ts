@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // //Development
-// const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:3000/api';
 
 // // Production
-const API_BASE_URL = 'https://car-rental-service-ix4n.onrender.com/api';
+// const API_BASE_URL = 'https://car-rental-service-ix4n.onrender.com/api';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
