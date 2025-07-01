@@ -26,7 +26,7 @@ const CarList: React.FC<CarListProps> = ({
   const { user } = useAuth();
 
   const handleRentClick = async (carId: number) => {
-    if (!user?.id) return;
+    // if (!user?.id) return;
     await onRentCar(carId);
   };
 

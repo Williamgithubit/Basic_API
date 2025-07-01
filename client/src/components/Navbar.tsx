@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 interface NavbarProps {
   activeTab: 'cars' | 'rentals';
@@ -46,6 +47,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+    toast.success('Logged out successfully');
     setIsMenuOpen(false);
   };
 
