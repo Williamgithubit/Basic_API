@@ -3,9 +3,9 @@ import CarList from "../components/CarList";
 import type { Car } from "../components/CarList";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import axios from "axios";
 import Header from "./Header";
 import toast from "react-hot-toast";
+import api from "../services/api"; 
 
 const BrowseCars: React.FC = () => {
   const [cars, setCars] = useState<Car[]>([]);
@@ -16,26 +16,17 @@ const BrowseCars: React.FC = () => {
   useEffect(() => {
     const fetchCars = async () => {
       try {
-        const res = await axios.get("/api/cars");
-
-        console.log("✅ Cars API Response:", res.data);
-
-        // Handle different API response formats
-        if (Array.isArray(res.data)) {
-          setCars(res.data);
-        } else if (Array.isArray(res.data.cars)) {
-          setCars(res.data.cars);
-        } else if (Array.isArray(res.data.data)) {
-          setCars(res.data.data);
+        const data = await api.cars.getAll(); 
+        if (Array.isArray(data)) {
+          setCars(data);
+          console.log("✅ Cars fetched:", data);
         } else {
-          console.error("⚠️ Unexpected car data format:", res.data);
+          console.warn("⚠️ Unexpected car data format:", data);
           toast.error("Unexpected response format from server.");
-          setCars([]); // Fallback to prevent crash
         }
       } catch (error) {
         console.error("❌ Error fetching cars:", error);
-        toast.error("Failed to load cars from server.");
-        setCars([]); // Ensure it's still a valid array
+        toast.error("Failed to load cars.");
       } finally {
         setLoading(false);
       }
