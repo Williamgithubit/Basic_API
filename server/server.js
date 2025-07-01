@@ -42,7 +42,7 @@ app.get('/', (req, res) => {
 app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
     try {
-        await db.sequelize.sync(); // Removed force: true to prevent database reset
+        await db.sequelize.sync();
         console.log('✅ Database connected successfully');
     } catch (error) {
         console.error('❌ Unable to connect to the database:', error);
