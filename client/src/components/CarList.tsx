@@ -1,6 +1,5 @@
-// CarList.tsx
 import React from "react";
-import { useAuth } from "../context/AuthContext";
+// import { useAuth } from "../context/AuthContext";
 
 export interface Car {
   id: number;
@@ -23,7 +22,7 @@ const CarList: React.FC<CarListProps> = ({
   onRentCar,
   isLoading = false,
 }) => {
-  const { user } = useAuth();
+  // const { user } = useAuth();
 
   const handleRentClick = async (carId: number) => {
     // if (!user?.id) return;

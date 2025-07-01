@@ -6,6 +6,7 @@ import CarList from "./CarList";
 import RentalList from "./RentalList";
 import Navbar from "./Navbar";
 
+
 type Tab = "cars" | "rentals";
 
 type Message = {
