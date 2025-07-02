@@ -8,7 +8,7 @@ export interface Car {
   year: number;
   rentalPricePerDay: number;
   isAvailable: boolean;
-  imageUrl?: string; // Optional, in case some cars don't have an image
+  imageUrl?: string; 
 }
 
 interface CarListProps {
