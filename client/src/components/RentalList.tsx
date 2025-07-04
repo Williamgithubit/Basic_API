@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { type Rental } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface RentalListProps {
   rentals: Rental[];
@@ -22,6 +24,7 @@ const RentalList: React.FC<RentalListProps> = ({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
   const [sortKey, setSortKey] = useState<"name" | "cost" | "date">("date");
   const [currentPage, setCurrentPage] = useState(1);
+  const [deletingRentalId, setDeletingRentalId] = useState<number | null>(null);
 
   const filteredRentals = useMemo(() => {
     return rentals
@@ -71,6 +74,8 @@ const RentalList: React.FC<RentalListProps> = ({
 
   return (
     <div className="space-y-6">
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
+
       <div className="flex flex-wrap gap-4 justify-between items-center">
         <input
           type="text"
@@ -162,26 +167,33 @@ const RentalList: React.FC<RentalListProps> = ({
                       <div className="mt-4">
                         <button
                           onClick={async () => {
+                            setDeletingRentalId(rental.id);
                             try {
                               await onRentalDeleted(rental.id);
+                              toast.success("Rental cancelled successfully");
                               setMessage({
                                 text: "Rental cancelled successfully",
                                 type: "success",
                               });
                             } catch (error: any) {
+                              toast.error("Failed to cancel rental");
                               setMessage({
                                 text:
                                   error?.response?.data?.message ||
                                   "Failed to cancel rental",
                                 type: "error",
                               });
+                            } finally {
+                              setDeletingRentalId(null);
                             }
                           }}
-                          disabled={!canCancel}
+                          disabled={!canCancel || deletingRentalId === rental.id}
                           className={`w-full px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2 ${
-                            canCancel
-                              ? "bg-red-500 text-white hover:bg-red-600"
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            canCancel && deletingRentalId === rental.id
+                              ? "bg-blue-400 text-white cursor-wait"
+                              : !canCancel
+                              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                              : "bg-red-500 text-white hover:bg-red-600"
                           }`}
                         >
                           <svg
@@ -197,7 +209,7 @@ const RentalList: React.FC<RentalListProps> = ({
                               d="M6 18L18 6M6 6l12 12"
                             />
                           </svg>
-                          <span>Cancel Rental</span>
+                          <span>{deletingRentalId === rental.id ? "Cancelling..." : "Cancel Rental"}</span>
                         </button>
                       </div>
                     </div>
