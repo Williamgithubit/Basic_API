@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import CarList from "../components/CarList";
+import React, { useEffect, useState, Suspense } from "react";
+import CarList from "./CarList";
 import type { Car } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -9,7 +9,31 @@ import api from "../services/api";
 import type { Rental } from "../services/api";
 import Modal from "react-modal";
 import Confetti from "react-confetti";
-import { useWindowSize } from "@react-hook/window-size";
+
+// Custom hook to get window size
+const useWindowSize = () => {
+  const [windowSize, setWindowSize] = React.useState({
+    width: typeof window !== "undefined" ? window.innerWidth : 0,
+    height: typeof window !== "undefined" ? window.innerHeight : 0,
+  });
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return windowSize;
+};
 
 type Tab = "available" | "rented";
 
@@ -20,10 +44,10 @@ const BrowseCars: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [width, height] = useWindowSize();
+  const { width, height } = useWindowSize();
 
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     fetchData();
@@ -35,7 +59,7 @@ const BrowseCars: React.FC = () => {
       const carsData = await api.cars.getAll();
       setCars(carsData);
 
-      if (user) {
+      if (isAuthenticated) {
         const rentalsData = await api.rentals.getAll();
         setRentals(rentalsData);
       } else {
@@ -76,10 +100,7 @@ const BrowseCars: React.FC = () => {
         endDate: endDate.toISOString().split("T")[0],
       });
 
-      // Update the rentals list
       setRentals((prev) => [...prev, rental]);
-      
-      // Update the car's availability
       setCars((prev) =>
         prev.map((car) =>
           car.id === carId ? { ...car, isAvailable: false } : car
@@ -92,13 +113,17 @@ const BrowseCars: React.FC = () => {
     } catch (error) {
       toast.error("Failed to rent car");
       if (error instanceof Error) console.error(error.message);
-      throw error; // Re-throw the error to be handled by CarList
+      throw error;
     }
   };
 
   const availableCars = cars.filter((car) => car.isAvailable);
-  const rentedCars = cars.filter((car) => !car.isAvailable);
-  const userRentals = rentals.filter((rental) => rental.customerId === user?.id);
+  const rentedCars = isAuthenticated
+    ? cars.filter((car) => !car.isAvailable)
+    : [];
+  const userRentals = rentals.filter(
+    (rental) => rental.customerId === user?.id
+  );
 
   return (
     <>
@@ -108,20 +133,30 @@ const BrowseCars: React.FC = () => {
           Browse Cars for Rent
         </h2>
 
-        {/* Tabs */}
         <div className="flex justify-center gap-4 mb-6">
           <button
             onClick={() => setTab("available")}
-            className={`px-4 py-2 rounded ${tab === "available" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            className={`px-4 py-2 rounded ${
+              tab === "available"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-800"
+            }`}
           >
             Available Cars
           </button>
-          <button
-            onClick={() => setTab("rented")}
-            className={`px-4 py-2 rounded ${tab === "rented" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-          >
-            Rented Cars
-          </button>
+
+          {isAuthenticated && (
+            <button
+              onClick={() => setTab("rented")}
+              className={`px-4 py-2 rounded ${
+                tab === "rented"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-800"
+              }`}
+            >
+              Rented Cars
+            </button>
+          )}
         </div>
 
         <CarList
@@ -132,14 +167,21 @@ const BrowseCars: React.FC = () => {
 
         {user && userRentals.length > 0 && (
           <div className="mt-12">
-            <h3 className="text-2xl font-semibold text-gray-800 mb-4">Your Rental History</h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+              Your Rental History
+            </h3>
             <ul className="space-y-3">
               {userRentals.map((rental) => {
                 const rentedCar = cars.find((car) => car.id === rental.carId);
                 return (
                   <li key={rental.id} className="p-4 bg-white shadow rounded">
-                    <p><strong>Car:</strong> {rentedCar?.name || "N/A"}</p>
-                    <p><strong>From:</strong> {rental.startDate} <strong>To:</strong> {rental.endDate}</p>
+                    <p>
+                      <strong>Car:</strong> {rentedCar?.name || "N/A"}
+                    </p>
+                    <p>
+                      <strong>From:</strong> {rental.startDate} &nbsp;
+                      <strong>To:</strong> {rental.endDate}
+                    </p>
                   </li>
                 );
               })}
@@ -148,40 +190,48 @@ const BrowseCars: React.FC = () => {
         )}
       </section>
 
-      {/* Confetti on success */}
-      {showConfetti && <Confetti width={width} height={height} />}
+      {showConfetti && (
+        <Confetti
+          width={width}
+          height={height}
+          recycle={false}
+          numberOfPieces={500}
+        />
+      )}
 
-      {/* Login Modal */}
-      <Modal
-        isOpen={showLoginModal}
-        onRequestClose={() => setShowLoginModal(false)}
-        contentLabel="Login Required"
-        className="bg-white max-w-md mx-auto mt-40 p-6 rounded-lg shadow-lg border outline-none"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-30 z-50"
-        ariaHideApp={false}
-      >
-        <h2 className="text-xl font-semibold mb-4">Login Required</h2>
-        <p className="mb-6 text-gray-600">You must be logged in to rent a car.</p>
-        <div className="flex justify-end gap-4">
-          <button
-            onClick={() => setShowLoginModal(false)}
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
+      <Suspense fallback={null}>
+        {showLoginModal && (
+          <Modal
+            isOpen={showLoginModal}
+            onRequestClose={() => setShowLoginModal(false)}
+            contentLabel="Login Required"
+            className="modal"
+            overlayClassName="modal-overlay"
           >
-            Cancel
-          </button>
-          <button
-            onClick={() => {
-              setShowLoginModal(false);
-              navigate("/login");
-            }}
-            className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Go to Login
-          </button>
-        </div>
-      </Modal>
+            <div className="bg-white p-6 rounded-lg max-w-md w-full mx-auto mt-20">
+              <h3 className="text-xl font-semibold mb-4">Login Required</h3>
+              <p className="mb-6">You need to be logged in to rent a car.</p>
+              <div className="flex justify-end space-x-4">
+                <button
+                  onClick={() => setShowLoginModal(false)}
+                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => navigate("/login")}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Go to Login
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </Suspense>
     </>
   );
 };
 
+Modal.setAppElement("#root");
 export default BrowseCars;

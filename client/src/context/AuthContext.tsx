@@ -12,6 +12,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   isLoading: boolean;
+  isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, phone: string, password: string) => Promise<void>;
   logout: () => void;
@@ -29,22 +30,29 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const verifyStoredToken = async () => {
+      console.log('Verifying stored token...');
       const token = localStorage.getItem('token');
       const userData = localStorage.getItem('user');
       
       if (!token || !userData) {
+        console.log('No token or user data found in localStorage');
         setIsLoading(false);
+        setIsInitialized(true);
         return;
       }
+      
+      console.log('Found token and user data in localStorage');
 
       try {
-        // Set token in API first
+        console.log('Setting auth token in API');
         api.setAuthToken(token);
+        console.log('Auth token set, verifying with server...');
         
         // Parse user data once
         const parsedUserData = JSON.parse(userData);
@@ -65,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         api.setAuthToken(null);
       } finally {
         setIsLoading(false);
+        setIsInitialized(true);
       }
     };
 
@@ -107,7 +116,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      user,
+      isLoading,
+      isInitialized,
+      login,
+      signup,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

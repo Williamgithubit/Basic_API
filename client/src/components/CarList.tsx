@@ -5,6 +5,14 @@ import { useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+// Format price with 2 decimal places and currency symbol
+const formatPrice = (price: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(price);
+};
+
 interface CarListProps {
   cars: Car[];
   onRentCar: (carId: number) => Promise<void>;
@@ -18,41 +26,48 @@ const CarList: React.FC<CarListProps> = ({ cars, onRentCar, isLoading = false })
 
   const handleRentClick = async (carId: number) => {
     if (!isAuthenticated) {
-      toast.error("You must be logged in to rent a car. Redirecting...");
-      setTimeout(() => navigate("/login"), 2000);
+      toast.warn("Please log in to rent a car");
+      setTimeout(() => navigate("/login"), 1500);
       return;
     }
 
-    setLoadingCarId(carId);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setLoadingCarId(carId);
       await onRentCar(carId);
       toast.success("Car rented successfully!");
     } catch (error) {
-      console.error("Error renting car:", error);
       toast.error("Failed to rent car. Please try again.");
     } finally {
       setLoadingCarId(null);
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(price);
-  };
-
   return (
     <div className="space-y-6">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
-      
+
       {isLoading ? (
         <div className="flex justify-center items-center min-h-[300px]">
           <div className="flex items-center space-x-3">
-            <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            <svg
+              className="animate-spin h-5 w-5 text-blue-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
             </svg>
             <span className="text-lg text-gray-600">Loading cars...</span>
           </div>
@@ -60,8 +75,18 @@ const CarList: React.FC<CarListProps> = ({ cars, onRentCar, isLoading = false })
       ) : cars.length === 0 ? (
         <div className="flex justify-center items-center min-h-[300px]">
           <div className="text-lg text-red-600 bg-red-50 px-4 py-3 rounded-lg shadow flex items-center">
-            <svg className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-6 w-6 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             No cars available
           </div>
@@ -96,7 +121,9 @@ const CarList: React.FC<CarListProps> = ({ cars, onRentCar, isLoading = false })
                   </div>
                   <span
                     className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      car.isAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      car.isAvailable
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
                     } whitespace-nowrap`}
                   >
                     {car.isAvailable ? "Available" : "Not Available"}
@@ -106,7 +133,9 @@ const CarList: React.FC<CarListProps> = ({ cars, onRentCar, isLoading = false })
                 <div className="flex items-center justify-between mt-4">
                   <p className="text-xl md:text-2xl font-bold text-gray-900">
                     {formatPrice(car.rentalPricePerDay)}
-                    <span className="text-sm md:text-base text-gray-500 font-normal ml-1">/day</span>
+                    <span className="text-sm md:text-base text-gray-500 font-normal ml-1">
+                      /day
+                    </span>
                   </p>
 
                   <button
@@ -120,11 +149,35 @@ const CarList: React.FC<CarListProps> = ({ cars, onRentCar, isLoading = false })
                         : "bg-blue-600 hover:bg-blue-700 text-white"
                     }`}
                   >
-                    {loadingCarId === car.id
-                      ? "Processing..."
-                      : car.isAvailable
-                      ? "Rent Now"
-                      : "Not Available"}
+                    {loadingCarId === car.id ? (
+                      <div className="flex items-center space-x-2">
+                        <svg
+                          className="animate-spin h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
+                        </svg>
+                        <span>Processing...</span>
+                      </div>
+                    ) : car.isAvailable ? (
+                      "Rent Now"
+                    ) : (
+                      "Not Available"
+                    )}
                   </button>
                 </div>
               </div>

@@ -18,13 +18,21 @@ const Login: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const state = location.state as { message?: string; email?: string } | null;
+    const state = location.state as { message?: string; email?: string; redirectTo?: string } | null;
     if (state?.message) {
       setSuccessMessage(state.message);
       if (state.email) {
         setEmail(state.email);
       }
+      // Clear the state to prevent showing the message again on refresh
       window.history.replaceState({}, document.title);
+    }
+    
+    // Check for remembered email
+    const rememberedEmail = localStorage.getItem("rememberedEmail");
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
     }
   }, [location]);
 
@@ -34,13 +42,17 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       await login(email, password);
-      // You can also save credentials to localStorage if `rememberMe` is true
+      
+      // Handle remember me functionality
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", email);
       } else {
         localStorage.removeItem("rememberedEmail");
       }
-      navigate("/dashboard");
+      
+      // Redirect to the intended URL or dashboard
+      const redirectTo = (location.state as any)?.redirectTo || "/dashboard";
+      navigate(redirectTo);
       toast.success("Login successful!");
     } catch (err: any) {
       setError(err.message || "Failed to login");

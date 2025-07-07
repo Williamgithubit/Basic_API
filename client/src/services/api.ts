@@ -1,10 +1,10 @@
-import axios from 'axios';
+import axios, { AxiosError, type AxiosResponse } from 'axios';
 
-// // //Development
-// const API_BASE_URL = 'http://localhost:3000/api';
+// Use environment variable for API base URL with fallback
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
-// // // Production
-const API_BASE_URL = 'https://car-rental-service-ix4n.onrender.com/api';
+// Log the API base URL for debugging
+console.log('API Base URL:', API_BASE_URL);
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -24,20 +24,22 @@ export const setAuthToken = (token: string | null) => {
 
 // Add response interceptor for error handling
 axiosInstance.interceptors.response.use(
-  (response: any) => {
-    // Always return the data property of the response
+  <T>(response: AxiosResponse<T>) => {
     return response.data;
   },
-  (error: any) => {
+  (error: AxiosError<any>) => {
     console.error('API Error:', error);
+
+    const errorMessage =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      'Server error';
+
     if (error.response) {
-      // Server responded with error status
-      throw new Error(error.response.data.error || error.response.data.message || 'Server error');
+      throw new Error(errorMessage);
     } else if (error.request) {
-      // Request made but no response received
       throw new Error('No response from server');
     } else {
-      // Error in request setup
       throw new Error('Error setting up request');
     }
   }
