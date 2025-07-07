@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -63,16 +63,21 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
+  
   console.log('Rendering App component');
   return (
     <div className="app-container" style={{ padding: '20px' }}>
-      <nav style={{ marginBottom: '20px', padding: '10px', background: '#f0f0f0', borderRadius: '4px' }}>
-        <Link to="/" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Home</Link> | 
-        <Link to="/cars" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Cars</Link> | 
-        <Link to="/about" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>About</Link> | 
-        <Link to="/contact" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Contact</Link> |
-        <Link to="/test" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Test Page</Link>
-      </nav>
+      {!isAuthPage && (
+        <nav style={{ marginBottom: '20px', padding: '10px', background: '#f0f0f0', borderRadius: '4px' }}>
+          <Link to="/" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Home</Link> | 
+          <Link to="/cars" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Cars</Link> | 
+          <Link to="/about" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>About</Link> | 
+          <Link to="/contact" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Contact</Link> |
+          <Link to="/test" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Test Page</Link>
+        </nav>
+      )}
       <AppContent />
       <Toaster position="top-center" />
     </div>
