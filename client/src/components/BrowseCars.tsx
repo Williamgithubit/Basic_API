@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import CarList from "../components/CarList";
-import type { Car } from "../components/CarList";
+import type { Car } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Header from "./Header";
@@ -8,6 +8,8 @@ import toast from "react-hot-toast";
 import api from "../services/api";
 import type { Rental } from "../services/api";
 import Modal from "react-modal";
+import Confetti from "react-confetti";
+import { useWindowSize } from "@react-hook/window-size";
 
 type Tab = "available" | "rented";
 
@@ -17,12 +19,15 @@ const BrowseCars: React.FC = () => {
   const [tab, setTab] = useState<Tab>("available");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [width, height] = useWindowSize();
+
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
     fetchData();
-  }, [user]); // refetch if login status changes
+  }, [user]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -46,7 +51,7 @@ const BrowseCars: React.FC = () => {
 
   const handleRentCar = async (carId: number) => {
     if (!user || !user.id) {
-      setShowLoginModal(true); // open login modal instead of redirect
+      setShowLoginModal(true);
       return;
     }
 
@@ -71,16 +76,23 @@ const BrowseCars: React.FC = () => {
         endDate: endDate.toISOString().split("T")[0],
       });
 
+      // Update the rentals list
       setRentals((prev) => [...prev, rental]);
+      
+      // Update the car's availability
       setCars((prev) =>
         prev.map((car) =>
           car.id === carId ? { ...car, isAvailable: false } : car
         )
       );
+
       toast.success("Car rented successfully");
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
     } catch (error) {
       toast.error("Failed to rent car");
       if (error instanceof Error) console.error(error.message);
+      throw error; // Re-throw the error to be handled by CarList
     }
   };
 
@@ -96,50 +108,38 @@ const BrowseCars: React.FC = () => {
           Browse Cars for Rent
         </h2>
 
+        {/* Tabs */}
         <div className="flex justify-center gap-4 mb-6">
           <button
             onClick={() => setTab("available")}
-            className={`px-4 py-2 rounded ${
-              tab === "available" ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
+            className={`px-4 py-2 rounded ${tab === "available" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
           >
             Available Cars
           </button>
           <button
             onClick={() => setTab("rented")}
-            className={`px-4 py-2 rounded ${
-              tab === "rented" ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
+            className={`px-4 py-2 rounded ${tab === "rented" ? "bg-blue-600 text-white" : "bg-gray-200"}`}
           >
             Rented Cars
           </button>
         </div>
 
-        {/* Car List */}
         <CarList
           cars={tab === "available" ? availableCars : rentedCars}
           onRentCar={handleRentCar}
           isLoading={isLoading}
         />
 
-        {/* Rental History for logged-in user */}
         {user && userRentals.length > 0 && (
           <div className="mt-12">
-            <h3 className="text-2xl font-semibold text-gray-800 mb-4">
-              Your Rental History
-            </h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-4">Your Rental History</h3>
             <ul className="space-y-3">
               {userRentals.map((rental) => {
                 const rentedCar = cars.find((car) => car.id === rental.carId);
                 return (
                   <li key={rental.id} className="p-4 bg-white shadow rounded">
-                    <p>
-                      <strong>Car:</strong> {rentedCar?.name || "N/A"}
-                    </p>
-                    <p>
-                      <strong>From:</strong> {rental.startDate} &nbsp; <strong>To:</strong>{" "}
-                      {rental.endDate}
-                    </p>
+                    <p><strong>Car:</strong> {rentedCar?.name || "N/A"}</p>
+                    <p><strong>From:</strong> {rental.startDate} <strong>To:</strong> {rental.endDate}</p>
                   </li>
                 );
               })}
@@ -147,6 +147,9 @@ const BrowseCars: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* Confetti on success */}
+      {showConfetti && <Confetti width={width} height={height} />}
 
       {/* Login Modal */}
       <Modal

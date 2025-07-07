@@ -66,17 +66,27 @@ const handleRentCar = async (carId: number) => {
       endDate: endDate.toISOString().split('T')[0]
     });
 
+    // Update the rentals list
     setRentals(prev => [...prev, rental]);
-    setCars(prev => prev.map(car => (car.id === carId ? { ...car, isAvailable: false } : car)));
+    
+    // Update the car's availability
+    setCars(prev => 
+      prev.map(car => 
+        car.id === carId ? { ...car, isAvailable: false } : car
+      )
+    );
+    
     setMessage({
       text: 'Car rented successfully',
       type: 'success'
     });
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to rent car';
     setMessage({
-      text: error instanceof Error ? error.message : 'Failed to rent car',
+      text: errorMessage,
       type: 'error'
     });
+    throw error; // Re-throw the error to be handled by CarList
   }
 };
 

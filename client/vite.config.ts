@@ -1,31 +1,40 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from '@tailwindcss/vite';
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
+  plugins: [react(), tailwindcss()],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
   build: {
-    outDir: 'dist', // Ensure the build output is correct
+    outDir: 'dist',
+    chunkSizeWarningLimit: 1000, // Optional: suppress warning up to 1MB
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          toastify: ['react-toastify'],
+          stripe: ['@stripe/react-stripe-js', '@stripe/stripe-js'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
   },
   server: {
-    port: 4000, // Vite development server runs on port 5173
-    host: true, // Make the server accessible from the network
-    strictPort: true, // Fail if the port is not available
+    port: 4000,
+    host: true,
+    strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000', // Updated to match backend port
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
     },
   },
   resolve: {
-    alias: [
-      { find: '@', replacement: '/src' }
-    ]
-  }
+    alias: [{ find: '@', replacement: '/src' }],
+  },
 });
