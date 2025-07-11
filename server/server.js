@@ -2,53 +2,73 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import db from './models/index.js';
-import customerRouter from './routes/customerRoutes.js';
-import carRouter from './routes/carRoutes.js';
-import rentalRouter from './routes/rentalRoutes.js';
-import authRouter from './routes/auth.js';
-import { verifyToken } from './controllers/authController.js';
 
+// Import routes
+import authRoutes from './routes/auth.js';
+import carRoutes from './routes/carRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
+import rentalRoutes from './routes/rentalRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+
+// Load environment variables
 dotenv.config();
 
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Set default port to 3000 to match client requests
 
-// Middleware to parse JSON bodies
+// Middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-    origin: "*", // Allow all origins for development
-    methods: "GET,POST,PUT,DELETE,OPTIONS",
-    allowedHeaders: "Content-Type,Authorization",
-}))
 
-// Public routes
-app.use('/api/auth', authRouter);
-app.use('/api/cars', carRouter); // Car routes handle their own auth
+// Log all requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
 
-// Protected routes
-app.use('/api/customers', verifyToken, customerRouter);
-app.use('/api/rentals', (req, res, next) => {
-    // Skip auth for GET requests to /api/rentals/active
-    if (req.method === 'GET' && req.path === '/active') {
-        next();
-    } else {
-        verifyToken(req, res, next);
-    }
-}, rentalRouter);
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/cars', carRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/rentals', rentalRoutes);
+app.use('/api/dashboard', dashboardRoutes); // Dashboard routes for admin and owner access
+app.use('/api/admin', adminRoutes); // Admin-only routes
 
+// Default route
 app.get('/', (req, res) => {
-    res.send('Welcome to Car Rental API');
+  res.send('Car Rental API is running');
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    message: 'Internal Server Error',
+    error: process.env.NODE_ENV === 'production' ? {} : err.message
+  });
+});
 
-app.listen(PORT, async () => {
-    console.log(`Server is running on port ${PORT}`);
-    try {
-        await db.sequelize.sync();
-        console.log('✅ Database connected successfully');
-    } catch (error) {
-        console.error('❌ Unable to connect to the database:', error);
+// Sync database and start server
+const startServer = async () => {
+  try {
+    await db.sequelize.sync({force: true}); // Set to true for development to drop and recreate tables
+    console.log('Database connection has been established successfully.');
+    
+    // In development, you may want to sync the models with the database
+    // In production, use migrations instead
+    if (process.env.NODE_ENV !== 'development') {
+      // await db.sequelize.sync({ alter: true }); // Use with caution as it alters tables
+      console.log('Database synchronized');
     }
-});
+    
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+  }
+};
+
+startServer();

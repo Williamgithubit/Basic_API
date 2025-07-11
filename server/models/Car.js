@@ -10,6 +10,10 @@ const Car = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    brand: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     model: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -28,17 +32,66 @@ const Car = (sequelize, DataTypes) => {
       validate: {
         min: 0,
       },
+      field: 'rental_price_per_day'
+    },
+    rating: {
+      type: DataTypes.DECIMAL(3, 1),
+      allowNull: false,
+      defaultValue: 4.5,
+      validate: {
+        min: 0,
+        max: 5,
+      },
+    },
+    reviews: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
+    seats: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        min: 1,
+        max: 10,
+      },
+    },
+    fuelType: {
+      type: DataTypes.ENUM('Petrol', 'Electric', 'Hybrid'),
+      allowNull: false,
+      field: 'fuel_type',
+      defaultValue: 'Petrol',
+    },
+    location: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'Downtown',
+    },
+    features: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
+    },
+    isLiked: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'is_liked',
     },
     isAvailable: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+      field: 'is_available',
     },
     imageUrl: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: 'https://via.placeholder.com/200x150?text=Car',
-      field: 'image_url' // THIS IS CRITICAL
+      field: 'image_url'
     }
   }, {
     timestamps: false,

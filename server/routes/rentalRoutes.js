@@ -1,6 +1,6 @@
 import express from 'express';
 import { createRental, getRental, getStats, getActive, deleteRental, getRentals } from '../controllers/rentalController.js';
-import { verifyToken } from '../controllers/authController.js';
+import auth from '../middleware/auth.js';
 import db from '../models/index.js';
 
 const rentalRouter = express.Router();
@@ -31,22 +31,14 @@ const verifyRentalOwnership = async (req, res, next) => {
   }
 };
 
-// Create a new rental (requires auth)
-rentalRouter.post("/", verifyToken, createRental);
+// Customer routes
+rentalRouter.post('/', auth(['customer']), createRental);
+rentalRouter.get('/active', auth(['customer']), getActive);
+rentalRouter.get('/:id', auth(['customer']), verifyRentalOwnership, getRental);
+rentalRouter.delete('/:id', auth(['customer']), verifyRentalOwnership, deleteRental);
 
-// Get rental statistics (admin only)
-rentalRouter.get("/stats", verifyToken, getStats);
-
-// Get active rentals for the logged-in user
-rentalRouter.get("/active", verifyToken, getActive);
-
-// Get specific rental (requires ownership)
-rentalRouter.get("/:id", verifyToken, verifyRentalOwnership, getRental);
-
-// Cancel a rental (requires ownership)
-rentalRouter.delete("/:id", verifyToken, verifyRentalOwnership, deleteRental);
-
-// Get all rentals (admin only)
-rentalRouter.get("/", verifyToken, getRentals);
+// Admin routes
+rentalRouter.get('/stats', auth(['admin']), getStats);
+rentalRouter.get('/', auth(['admin']), getRentals);
 
 export default rentalRouter;

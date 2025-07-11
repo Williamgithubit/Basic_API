@@ -1,21 +1,18 @@
 import express from 'express';
-import * as customerController from "../controllers/customerController.js";
+import { createCustomer, getCustomers, getCustomer, updateCustomer, deleteCustomer } from '../controllers/customerController.js';
+import auth from '../middleware/auth.js';
 
 const customerRouter = express.Router();
 
-// Create a new customer
-customerRouter.post("/", customerController.createCustomer);
+// Public routes - anyone can view customers
+customerRouter.get('/', getCustomers);
+customerRouter.get('/:id', getCustomer);
 
-// Get all customers
-customerRouter.get("/", customerController.getCustomers);
+// Customer routes - only authenticated customers can update their own profile
+customerRouter.post('/', auth(['customer']), createCustomer);
+customerRouter.put('/:id', auth(['customer']), updateCustomer);
 
-// Get a single customer
-customerRouter.get("/:id", customerController.getCustomer);
-
-// Update a customer
-customerRouter.put("/:id", customerController.updateCustomer);
-
-// Delete a customer
-customerRouter.delete("/:id", customerController.deleteCustomer);
+// Admin routes - only admin can manage customers
+customerRouter.delete('/:id', auth(['admin']), deleteCustomer);
 
 export default customerRouter;

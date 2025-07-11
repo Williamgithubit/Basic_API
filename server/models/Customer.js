@@ -26,11 +26,41 @@ const Customer = (sequelize, DataTypes) => {
     },
     phone: {
       type: DataTypes.STRING,
-      allowNull: false, // Phone is required
+      allowNull: true, // Phone is optional now
       validate: {
         // Simple phone number validation (adjust regex as needed)
         is: /^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s./0-9]*$/,
       },
+    },
+    // Added role field for access control
+    role: {
+      type: DataTypes.ENUM('customer', 'owner', 'admin'),
+      allowNull: false,
+      defaultValue: 'customer',
+      validate: {
+        isIn: [['customer', 'owner', 'admin']],
+      }
+    },
+    // Added isActive field for account status
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
+    // Optional avatar/profile image URL
+    imageUrl: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    // Added last login timestamp
+    lastLogin: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    // Added optional address information
+    address: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
   }, {
     timestamps: true,  // Enables createdAt/updatedAt fields
@@ -40,6 +70,10 @@ const Customer = (sequelize, DataTypes) => {
       beforeCreate: async (customer) => {
         if (customer.password) {
           customer.password = await bcrypt.hash(customer.password, 10);
+        }
+        // Set default role if not specified
+        if (!customer.role) {
+          customer.role = 'customer';
         }
       },
       beforeUpdate: async (customer) => {
@@ -53,6 +87,21 @@ const Customer = (sequelize, DataTypes) => {
   // Instance methods
   Customer.prototype.validatePassword = async function(password) {
     return bcrypt.compare(password, this.password);
+  };
+
+  // Check if user has specific role
+  Customer.prototype.hasRole = function(role) {
+    return this.role === role;
+  };
+
+  // Check if user has permission to access dashboard
+  Customer.prototype.canAccessDashboard = function() {
+    return this.isActive && (this.role === 'admin' || this.role === 'owner');
+  };
+
+  // Check if user can manage other users (admin only)
+  Customer.prototype.canManageUsers = function() {
+    return this.isActive && this.role === 'admin';
   };
 
   Customer.associate = (models) => {
