@@ -3,7 +3,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig({  
+  base: '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -13,7 +14,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    chunkSizeWarningLimit: 1000, // Set chunk size warning limit to 1000 kB
+    chunkSizeWarningLimit: 2000, // Set chunk size warning limit to 2000 kB
     rollupOptions: {
       output: {
         manualChunks(id) {
