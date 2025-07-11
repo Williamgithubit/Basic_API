@@ -53,12 +53,12 @@ app.use((err, req, res, next) => {
 // Sync database and start server
 const startServer = async () => {
   try {
-    await db.sequelize.sync({force: true}); // Set to true for development to drop and recreate tables
+    await db.sequelize.sync(); // Set to true for development to drop and recreate tables
     console.log('Database connection has been established successfully.');
     
     // In development, you may want to sync the models with the database
     // In production, use migrations instead
-    if (process.env.NODE_ENV !== 'development') {
+    if (process.env.NODE_ENV !== 'production') {
       // await db.sequelize.sync({ alter: true }); // Use with caution as it alters tables
       console.log('Database synchronized');
     }
