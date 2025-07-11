@@ -62,7 +62,7 @@ const Header: React.FC = () => {
           className="flex items-center text-blue-600 text-2xl font-bold"
         >
           <FaCarSide className="mr-2" />
-          Tealo's Car Rental
+          MiRide
         </Link>
 
         {/* Hamburger (mobile) */}
@@ -74,11 +74,8 @@ const Header: React.FC = () => {
         </button>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex space-x-6 text-gray-700 font-medium">
-          <Link to="/" className="hover:text-blue-600">Home</Link>
+        <nav className="hidden md:flex justify-end space-x-6 text-gray-700 font-medium">
           <Link to="/cars" className="hover:text-blue-600">Browse Cars</Link>
-          <Link to="/about" className="hover:text-blue-600">About Us</Link>
-          <Link to="/contact" className="hover:text-blue-600">Contact</Link>
         </nav>
 
         {/* Desktop Auth/Profile */}
@@ -149,10 +146,7 @@ const Header: React.FC = () => {
             className="md:hidden overflow-hidden bg-white border-t border-gray-200 shadow-md"
           >
             <div className="flex flex-col space-y-4 px-6 pt-4 pb-6 text-gray-700 font-medium">
-              <Link to="/" onClick={closeMenu} className="hover:text-blue-600">Home</Link>
               <Link to="/cars" onClick={closeMenu} className="hover:text-blue-600">Browse Cars</Link>
-              <Link to="/about" onClick={closeMenu} className="hover:text-blue-600">About Us</Link>
-              <Link to="/contact" onClick={closeMenu} className="hover:text-blue-600">Contact</Link>
 
               {user ? (
                 <>

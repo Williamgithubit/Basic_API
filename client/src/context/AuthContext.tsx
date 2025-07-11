@@ -1,131 +1,174 @@
+// client/src/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import api from '../services/api';
 
 interface User {
   id: number;
   name: string;
   email: string;
+  role: 'customer' | 'owner' | 'admin';
+  phone?: string;
+}
+
+interface SignupData {
+  name: string;
+  email: string;
   phone: string;
+  password: string;
+  role: 'customer' | 'owner';
 }
 
 interface AuthContextType {
-  isAuthenticated: boolean;
   user: User | null;
-  isLoading: boolean;
-  isInitialized: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, phone: string, password: string) => Promise<void>;
+  signup: (data: SignupData) => Promise<User>;
   logout: () => void;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isAdmin: boolean;
+  isOwner: boolean;
+  isCustomer: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const verifyStoredToken = async () => {
-      console.log('Verifying stored token...');
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
-      
-      if (!token || !userData) {
-        console.log('No token or user data found in localStorage');
-        setIsLoading(false);
-        setIsInitialized(true);
-        return;
-      }
-      
-      console.log('Found token and user data in localStorage');
-
+    const checkAuth = async () => {
       try {
-        console.log('Setting auth token in API');
-        api.setAuthToken(token);
-        console.log('Auth token set, verifying with server...');
+        const token = localStorage.getItem('token');
+        console.log('Token from localStorage:', token ? 'Token exists' : 'No token found');
         
-        // Parse user data once
-        const parsedUserData = JSON.parse(userData);
-        
-        // Verify token by making a request to a protected endpoint
-        const verifiedUser = await api.customers.getOne(parsedUserData.id);
-        
-        // If request succeeds, token is valid
-        setIsAuthenticated(true);
-        setUser(verifiedUser);
+        if (token) {
+          // Set the token in the API service
+          api.setAuthToken(token);
+          
+          try {
+            const response = await api.auth.getMe();
+            console.log('Authentication successful');
+            setUser({
+              id: response.id,
+              name: response.name,
+              email: response.email,
+              role: response.role,
+              phone: response.phone,
+            });
+          } catch (apiError: any) {
+            console.error('API Error during authentication check:', apiError);
+            
+            // Check if token is expired or invalid
+            if (apiError.message === 'Invalid token' || apiError.message === 'Token expired') {
+              console.log('Token is invalid or expired, attempting to refresh...');
+              // For now, just log out the user
+              localStorage.removeItem('token');
+              api.setAuthToken(null);
+              setUser(null);
+            } else {
+              // For other errors, keep the token but log the error
+              console.error('Other API error:', apiError.message);
+            }
+          }
+        }
       } catch (error) {
-        console.error('Token verification failed:', error);
-        // If token is invalid, clear everything
+        console.error('Auth check failed', error);
         localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setIsAuthenticated(false);
+        api.setAuthToken(null); // Clear the token in the API service
         setUser(null);
-        api.setAuthToken(null);
       } finally {
         setIsLoading(false);
-        setIsInitialized(true);
       }
     };
 
-    verifyStoredToken();
+    checkAuth();
+    
+    // Set up event listener for storage changes (in case token is modified in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token') {
+        if (!e.newValue) {
+          // Token was removed
+          setUser(null);
+          api.setAuthToken(null);
+        } else if (e.newValue !== e.oldValue) {
+          // Token was changed, re-authenticate
+          checkAuth();
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await api.auth.login({ email, password });
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.customer));
-      setIsAuthenticated(true);
-      setUser(response.customer);
-      api.setAuthToken(response.token);
+      const { token, user } = response;
+      localStorage.setItem('token', token);
+      // Set the token in the API service
+      api.setAuthToken(token);
+      setUser({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      });
     } catch (error) {
+      console.error('Login failed', error);
       throw error;
     }
   };
 
-  const signup = async (name: string, email: string, phone: string, password: string) => {
+  const signup = async (data: SignupData): Promise<User> => {
     try {
-      await api.auth.signup({ name, email, phone, password });
-      // Don't store credentials or set authentication state after signup
-      // User needs to log in explicitly
+      const response = await api.auth.signup(data);
+      const { token, user } = response;
+      localStorage.setItem('token', token);
+      // Set the token in the API service
+      api.setAuthToken(token);
+      setUser({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      });
+      return user;
     } catch (error) {
+      console.error('Signup failed', error);
       throw error;
     }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsAuthenticated(false);
+    api.setAuthToken(null); // Clear the token in the API service
     setUser(null);
-    api.setAuthToken(null);
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  const value: AuthContextType = {
+    user,
+    login,
+    signup,
+    logout,
+    isAuthenticated: !!user,
+    isLoading,
+    isAdmin: user?.role === 'admin',
+    isOwner: user?.role === 'owner',
+    isCustomer: user?.role === 'customer',
+  };
 
-  return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      user,
-      isLoading,
-      isInitialized,
-      login,
-      signup,
-      logout,
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

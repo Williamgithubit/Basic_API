@@ -63,7 +63,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange }) => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="text-xl font-bold flex items-center space-x-2 cursor-pointer">
-            <span> Tealo's Car Rental</span>
+            <span>MiRide</span>
           </Link>
 
           {/* Desktop Menu */}

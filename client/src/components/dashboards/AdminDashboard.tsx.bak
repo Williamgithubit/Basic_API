@@ -1,0 +1,1022 @@
+import React, { useState, useEffect } from 'react';
+import Sidebar from './shared/Sidebar';
+import DataTable from './shared/DataTable';
+import RevenueChart from './shared/RevenueChart';
+import PieChartComponent from './shared/PieChartComponent';
+import api, { type User, type Car, type Rental, type RevenueData } from '../../services/api';
+import { FaUserPlus, FaCarSide, FaChartLine, FaFileExport } from 'react-icons/fa';
+import RoleGuard from './shared/RoleGuard';
+
+interface AdminStats {
+  totalUsers: number;
+  totalCars: number;
+  totalBookings: number;
+  totalRevenue: number;
+  revenueByMonth: RevenueData[];
+  usersByRole: { [key: string]: number };
+  carsByStatus: { [key: string]: number };
+}
+
+// User Modal Component
+interface UserModalProps {
+  show: boolean;
+  onClose: () => void;
+  user: User | null;
+  onSave: (data: any) => void;
+}
+
+const UserModal: React.FC<UserModalProps> = ({ show, onClose, user, onSave }) => {
+  if (!show) return null;
+
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    role: user?.role || 'customer',
+    password: ''
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">{user ? 'Edit User' : 'Add New User'}</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Name</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Phone</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="customer">Customer</option>
+                <option value="owner">Owner</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            {!user && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                  required={!user}
+                />
+              </div>
+            )}
+          </div>
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              {user ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Car Modal Component
+interface CarModalProps {
+  show: boolean;
+  onClose: () => void;
+  car: Car | null;
+  onSave: (data: any) => void;
+}
+
+const CarModal: React.FC<CarModalProps> = ({ show, onClose, car, onSave }) => {
+  if (!show) return null;
+
+  const [formData, setFormData] = useState({
+    name: car?.name || '',
+    description: car?.description || '',
+    brand: car?.brand || '',
+    model: car?.model || '',
+    year: car?.year || new Date().getFullYear(),
+    rentalPricePerDay: car?.rentalPricePerDay || 0,
+    location: car?.location || '',
+    isAvailable: car?.isAvailable !== undefined ? car.isAvailable : true,
+    imageUrl: car?.imageUrl || '',
+    features: car?.features?.join(', ') || '',
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const isCheckbox = type === 'checkbox';
+    // @ts-ignore
+    const inputValue = isCheckbox ? e.target.checked : value;
+    setFormData(prev => ({ ...prev, [name]: inputValue }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...formData,
+      features: formData.features.split(',').map(f => f.trim()),
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">{car ? 'Edit Car' : 'Add New Car'}</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Name" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+            <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Description" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+            <input type="text" name="brand" value={formData.brand} onChange={handleChange} placeholder="Brand" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+            <input type="text" name="model" value={formData.model} onChange={handleChange} placeholder="Model" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+            <input type="number" name="year" value={formData.year} onChange={handleChange} placeholder="Year" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+            <input type="number" name="rentalPricePerDay" value={formData.rentalPricePerDay} onChange={handleChange} placeholder="Price Per Day" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+            <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="Location" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+            <input type="text" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="Image URL" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+            <input type="text" name="features" value={formData.features} onChange={handleChange} placeholder="Features (comma-separated)" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+            <div className="flex items-center">
+              <input type="checkbox" name="isAvailable" checked={formData.isAvailable} onChange={handleChange} className="h-4 w-4 text-blue-600 border-gray-300 rounded" />
+              <label className="ml-2 block text-sm text-gray-900">Available</label>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end space-x-3">
+            <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{car ? 'Update' : 'Create'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export const AdminDashboard: React.FC = () => {
+  const [activeSection, setActiveSection] = useState('user-management');
+  const [users, setUsers] = useState<User[]>([]);
+  const [cars, setCars] = useState<Car[]>([]);
+  const [bookings, setBookings] = useState<Rental[]>([]);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Modal states for CRUD operations
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showCarModal, setShowCarModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null);
+
+  useEffect(() => {
+    // Load data based on active section
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        switch (activeSection) {
+          case 'user-management':
+            const userData = await api.users.getAll();
+            setUsers(userData);
+            break;
+          case 'car-management':
+            const carData = await api.cars.getAll();
+            setCars(carData);
+            break;
+          case 'bookings-overview':
+            const bookingData = await api.rentals.getAll();
+            setBookings(bookingData);
+            break;
+          case 'revenue':
+          case 'reports':
+            const adminStats = await api.dashboard.getAdminStats();
+            setStats(adminStats);
+            break;
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load data');
+        console.error('Error loading data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [activeSection]);
+
+  // User management handlers
+  const handleSaveUser = async (data: any) => {
+    try {
+      if (selectedUser) {
+        const updatedUser = await api.users.update(selectedUser.id, data);
+        setUsers(users.map(u => u.id === selectedUser.id ? updatedUser : u));
+      } else {
+        const newUser = await api.users.create(data);
+        setUsers([...users, newUser]);
+      }
+      setShowUserModal(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save user');
+    }
+  };
+
+  const handleAddUser = () => {
+    setSelectedUser(null);
+    setShowUserModal(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setShowUserModal(true);
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    if (window.confirm(`Are you sure you want to delete user ${user.name}?`)) {
+      try {
+        await api.users.delete(user.id);
+        setUsers(users.filter(u => u.id !== user.id));
+      } catch (err: any) {
+        setError(err.message || 'Failed to delete user');
+      }
+    }
+  };
+
+  const handleSaveCar = async (data: any) => {
+    try {
+      if (selectedCar) {
+        const updatedCar = await api.cars.update(selectedCar.id, data);
+        setCars(cars.map(c => c.id === selectedCar.id ? updatedCar : c));
+      } else {
+        const newCar = await api.cars.create(data);
+        setCars([...cars, newCar]);
+      }
+      setShowCarModal(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save car');
+    }
+  };
+
+  const handleToggleUserActive = async (user: User) => {
+    try {
+      const updatedUser = await api.users.toggleActive(user.id);
+      setUsers(users.map(u => u.id === user.id ? updatedUser : u));
+    } catch (err: any) {
+      setError(err.message || 'Failed to update user status');
+    }
+  };
+
+
+  const handleAddCar = () => {
+    setSelectedCar(null);
+    setShowCarModal(true);
+  };
+
+  const handleEditCar = (car: Car) => {
+    setSelectedCar(car);
+    setShowCarModal(true);
+  };
+
+  const handleDeleteCar = async (car: Car) => {
+    if (window.confirm(`Are you sure you want to delete car ${car.name}?`)) {
+      try {
+        await api.cars.delete(car.id);
+        setCars(cars.filter(c => c.id !== car.id));
+      } catch (err: any) {
+        setError(err.message || 'Failed to delete car');
+      }
+    }
+  };
+
+  // Export data to CSV
+  const exportToCSV = (data: any[], filename: string) => {
+    if (!data || data.length === 0) {
+      alert('No data to export');
+      return;
+    }
+    
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(item => Object.values(item).join(','));
+    const csv = [headers, ...rows].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `${filename}-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Render content based on active section
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center h-full">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="p-6">
+          <div className="bg-red-100 text-red-700 p-4 rounded-md">
+            Error: {error}
+            <button 
+              onClick={() => window.location.reload()} 
+              className="ml-4 bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    switch (activeSection) {
+      case 'user-management':
+        return (
+          <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold">User Management</h2>
+              <button 
+                onClick={handleAddUser}
+                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                <FaUserPlus className="mr-2" /> Add User
+              </button>
+            </div>
+            
+            <DataTable 
+              columns={[
+                { key: 'name', header: 'Name', sortable: true },
+                { key: 'email', header: 'Email', sortable: true },
+                { key: 'phone', header: 'Phone' },
+                { key: 'role', header: 'Role', sortable: true },
+                { 
+                  key: 'isActive', 
+                  header: 'Status', 
+                  sortable: true,
+                  render: (value, item) => (
+                    <span className={`px-2 py-1 rounded text-xs ${value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {value ? 'Active' : 'Inactive'}
+                    </span>
+                  )
+                },
+                { 
+                  key: 'createdAt', 
+                  header: 'Created', 
+                  sortable: true,
+                  render: (value) => value ? new Date(value).toLocaleDateString() : 'N/A'
+                },
+              ]}
+              data={users}
+              title="Users"
+              onEdit={handleEditUser}
+              onDelete={handleDeleteUser}
+              onView={(user) => handleToggleUserActive(user)}
+              actions={true}
+              pagination={true}
+              searchable={true}
+            />
+          </div>
+        );
+        
+      case 'car-management':
+        return (
+          <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold">Car Management</h2>
+              <button 
+                onClick={handleAddCar}
+                className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                <FaCarSide className="mr-2" /> Add Car
+              </button>
+            </div>
+            
+            <DataTable 
+              columns={[
+                { key: 'name', header: 'Name', sortable: true },
+                { key: 'brand', header: 'Brand', sortable: true },
+                { key: 'model', header: 'Model', sortable: true },
+                { key: 'year', header: 'Year', sortable: true },
+                { 
+                  key: 'rentalPricePerDay', 
+                  header: 'Price/Day', 
+                  sortable: true,
+                  render: (value) => `$${value}`
+                },
+                { 
+                  key: 'isAvailable', 
+                  header: 'Available', 
+                  sortable: true,
+                  render: (value) => (
+                    <span className={`px-2 py-1 rounded text-xs ${value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {value ? 'Available' : 'Unavailable'}
+                    </span>
+                  )
+                },
+              ]}
+              data={cars}
+              title="Car Listings"
+              onEdit={handleEditCar}
+              onDelete={handleDeleteCar}
+              actions={true}
+              pagination={true}
+              searchable={true}
+            />
+          </div>
+        );
+        
+      case 'bookings-overview':
+        return (
+          <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold">Bookings Overview</h2>
+              <button 
+                onClick={() => exportToCSV(bookings, 'bookings')}
+                className="flex items-center bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                <FaFileExport className="mr-2" /> Export CSV
+              </button>
+            </div>
+            
+            <DataTable 
+              columns={[
+                { 
+                  key: 'id', 
+                  header: 'Booking ID', 
+                  render: (value) => `#${value}`
+                },
+                { 
+                  key: 'Car', 
+                  header: 'Car', 
+                  render: (value) => value?.name || 'N/A'
+                },
+                { 
+                  key: 'Customer', 
+                  header: 'Customer', 
+                  render: (value) => value?.name || 'N/A'
+                },
+                { 
+                  key: 'startDate', 
+                  header: 'Start Date', 
+                  sortable: true,
+                  render: (value) => new Date(value).toLocaleDateString()
+                },
+                { 
+                  key: 'endDate', 
+                  header: 'End Date', 
+                  sortable: true,
+                  render: (value) => new Date(value).toLocaleDateString()
+                },
+                { 
+                  key: 'totalCost', 
+                  header: 'Total Cost', 
+                  sortable: true,
+                  render: (value) => `$${value}`
+                },
+              ]}
+              data={bookings}
+              title="All Bookings"
+              actions={false}
+              pagination={true}
+              searchable={true}
+            />
+          </div>
+        );
+        
+      case 'revenue':
+        return (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Revenue Analytics</h2>
+            
+            {stats && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
+                  <h3 className="text-lg font-semibold text-gray-500">Total Revenue</h3>
+                  <p className="text-3xl font-bold">${stats.totalRevenue.toLocaleString()}</p>
+                </div>
+                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
+                  <h3 className="text-lg font-semibold text-gray-500">Total Bookings</h3>
+                  <p className="text-3xl font-bold">{stats.totalBookings}</p>
+                </div>
+                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
+                  <h3 className="text-lg font-semibold text-gray-500">Total Cars</h3>
+                  <p className="text-3xl font-bold">{stats.totalCars}</p>
+                </div>
+                <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
+                  <h3 className="text-lg font-semibold text-gray-500">Total Users</h3>
+                  <p className="text-3xl font-bold">{stats.totalUsers}</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {stats && stats.revenueByMonth && (
+                <RevenueChart 
+                  data={stats.revenueByMonth.map(item => ({
+                    name: item.period,
+                    revenue: item.revenue,
+                    bookings: item.bookings
+                  }))}
+                  title="Monthly Revenue"
+                />
+              )}
+              
+              <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-semibold mb-4">User Distribution</h3>
+                {stats && stats.usersByRole && (
+                  <PieChartComponent 
+                    title="User Distribution"
+                    data={Object.entries(stats.usersByRole).map(([key, value], index) => ({
+                      name: key.charAt(0).toUpperCase() + key.slice(1),
+                      value: value as number,
+                      color: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'][index % 4]
+                    }))}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      
+    case 'reports':
+      return (
+        <div className="p-6">
+          <h2 className="text-2xl font-bold mb-6">Reports</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-4 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold mb-4">Available Reports</h3>
+              <ul className="space-y-2">
+                <li>
+                  <button 
+                    onClick={() => exportToCSV(users, 'users')}
+                    className="flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <FaFileExport className="mr-2" /> Export Users List
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => exportToCSV(cars, 'cars')}
+                    className="flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <FaFileExport className="mr-2" /> Export Cars List
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => exportToCSV(bookings, 'bookings')}
+                    className="flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <FaFileExport className="mr-2" /> Export Bookings List
+                  </button>
+                </li>
+                {stats && stats.revenueByMonth && (
+                  <li>
+                    <button 
+                      onClick={() => exportToCSV(stats.revenueByMonth, 'revenue')}
+                      className="flex items-center text-blue-600 hover:text-blue-800"
+                    >
+                      <FaFileExport className="mr-2" /> Export Revenue Data
+                    </button>
+                  </li>
+                )}
+              </ul>
+            </div>
+            
+            <div className="bg-white p-4 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold mb-4">Generate Custom Report</h3>
+              <p className="text-gray-600 mb-4">Select parameters to generate a custom report</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Report Type</label>
+                  <select className="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                    <option>User Activity</option>
+                    <option>Revenue Analysis</option>
+                    <option>Car Performance</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date Range</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <input type="date" className="p-2 border border-gray-300 rounded-md" />
+                    <input type="date" className="p-2 border border-gray-300 rounded-md" />
+                  </div>
+                </div>
+                
+                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                  Generate Report
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+        
+      case 'settings':
+        return (
+          <div className="p-6">
+            <h2 className="text-2xl font-bold mb-6">Platform Settings</h2>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h3 className="text-lg font-semibold mb-4">General Settings</h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Platform Name</label>
+                  <input 
+                    type="text" 
+                    className="w-full p-2 border border-gray-300 rounded-md" 
+                    defaultValue="Car Rental Service"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Contact Email</label>
+                  <input 
+                    type="email" 
+                    className="w-full p-2 border border-gray-300 rounded-md" 
+                    defaultValue="admin@carrentalservice.com"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Default Rental Period (days)</label>
+                  <input 
+                    type="number" 
+                    className="w-full p-2 border border-gray-300 rounded-md" 
+                    defaultValue="7"
+                  />
+                </div>
+                
+                <div className="flex items-center">
+                  <input type="checkbox" id="maintenance-mode" className="mr-2" />
+                  <label htmlFor="maintenance-mode">Enable Maintenance Mode</label>
+                </div>
+                
+                <button className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                  Save Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+        
+      default:
+        return (
+          <div className="p-6">
+            <h2 className="text-2xl font-bold mb-6">Admin Dashboard</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div 
+                className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setActiveSection('user-management')}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Users</h3>
+                  <FaUserPlus className="text-blue-500 text-xl" />
+                </div>
+                <p className="text-3xl font-bold mt-2">{stats?.totalUsers || 0}</p>
+                <p className="text-sm text-gray-500 mt-1">Manage all users</p>
+              </div>
+              
+              <div 
+                className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setActiveSection('car-management')}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Cars</h3>
+                  <FaCarSide className="text-green-500 text-xl" />
+                </div>
+                <p className="text-3xl font-bold mt-2">{stats?.totalCars || 0}</p>
+                <p className="text-sm text-gray-500 mt-1">Manage car listings</p>
+              </div>
+              
+              <div 
+                className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setActiveSection('bookings-overview')}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Bookings</h3>
+                  <FaChartLine className="text-purple-500 text-xl" />
+                </div>
+                <p className="text-3xl font-bold mt-2">{stats?.totalBookings || 0}</p>
+                <p className="text-sm text-gray-500 mt-1">View all bookings</p>
+              </div>
+              
+              <div 
+                className="bg-white p-6 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => setActiveSection('revenue')}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Revenue</h3>
+                  <FaChartLine className="text-yellow-500 text-xl" />
+                </div>
+                <p className="text-3xl font-bold mt-2">${stats?.totalRevenue || 0}</p>
+                <p className="text-sm text-gray-500 mt-1">View revenue analytics</p>
+              </div>
+            </div>
+            
+            {stats && stats.revenueByMonth && (
+              <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 className="text-lg font-semibold mb-4">Revenue Overview</h3>
+                <RevenueChart 
+                  data={stats.revenueByMonth.map(item => ({
+                    name: item.period,
+                    revenue: item.revenue,
+                    bookings: item.bookings
+                  }))}
+                  title=""
+                />
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {stats && stats.usersByRole && (
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <h3 className="text-lg font-semibold mb-4">User Distribution</h3>
+                  <PieChartComponent 
+                    data={[
+                      { name: 'Customers', value: stats.usersByRole.customer || 0, color: '#8884d8' },
+                      { name: 'Owners', value: stats.usersByRole.owner || 0, color: '#82ca9d' },
+                      { name: 'Admins', value: stats.usersByRole.admin || 0, color: '#ffc658' }
+                    ]}
+                    title=""
+                  />
+                </div>
+              )}
+              
+              {stats && stats.carsByStatus && (
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <h3 className="text-lg font-semibold mb-4">Car Status Distribution</h3>
+                  <PieChartComponent 
+                    data={[
+                      { name: 'Available', value: stats.carsByStatus.available || 0, color: '#82ca9d' },
+                      { name: 'Rented', value: stats.carsByStatus.rented || 0, color: '#8884d8' },
+                      { name: 'Maintenance', value: stats.carsByStatus.maintenance || 0, color: '#ffc658' }
+                    ]}
+                    title=""
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+  };
+
+  return (
+    <RoleGuard allowedRoles={['admin']}>
+      <div className="flex h-screen bg-gray-100">
+        <Sidebar 
+          role="admin"
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+        />
+        
+        <div className="flex-1 md:ml-64 overflow-y-auto">
+          <main className="flex-1 p-6 overflow-y-auto">
+            {renderContent()}
+          </main>
+
+          <UserModal 
+            show={showUserModal} 
+            onClose={() => setShowUserModal(false)} 
+            user={selectedUser}
+            onSave={handleSaveUser}
+          />
+
+          <CarModal 
+            show={showCarModal}
+            onClose={() => setShowCarModal(false)}
+            car={selectedCar}
+            onSave={handleSaveCar}
+          />
+        </div>
+      </div>
+    </RoleGuard>
+  );
+};
+
+
+    const [formData, setFormData] = useState({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      role: user?.role || 'customer',
+      password: ''
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSave(formData);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4">{user ? 'Edit User' : 'Add New User'}</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="customer">Customer</option>
+                  <option value="owner">Owner</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              {!user && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Password</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
+                    required={!user}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                {user ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+
+    if (!show) return null;
+
+    const [formData, setFormData] = useState({
+      name: car?.name || '',
+      description: car?.description || '',
+      brand: car?.brand || '',
+      model: car?.model || '',
+      year: car?.year || new Date().getFullYear(),
+      rentalPricePerDay: car?.rentalPricePerDay || 0,
+      location: car?.location || '',
+      isAvailable: car?.isAvailable !== undefined ? car.isAvailable : true,
+      imageUrl: car?.imageUrl || '',
+      features: car?.features?.join(', ') || '',
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const { name, value, type } = e.target;
+      const isCheckbox = type === 'checkbox';
+      // @ts-ignore
+      const inputValue = isCheckbox ? e.target.checked : value;
+      setFormData(prev => ({ ...prev, [name]: inputValue }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSave({
+        ...formData,
+        features: formData.features.split(',').map(f => f.trim()),
+      });
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4">{car ? 'Edit Car' : 'Add New Car'}</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Name" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+              <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Description" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+              <input type="text" name="brand" value={formData.brand} onChange={handleChange} placeholder="Brand" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+              <input type="text" name="model" value={formData.model} onChange={handleChange} placeholder="Model" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+              <input type="number" name="year" value={formData.year} onChange={handleChange} placeholder="Year" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+              <input type="number" name="rentalPricePerDay" value={formData.rentalPricePerDay} onChange={handleChange} placeholder="Price Per Day" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+              <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="Location" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" required />
+              <input type="text" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="Image URL" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+              <input type="text" name="features" value={formData.features} onChange={handleChange} placeholder="Features (comma-separated)" className="mt-1 block w-full p-2 border border-gray-300 rounded-md" />
+              <div className="flex items-center">
+                <input type="checkbox" name="isAvailable" checked={formData.isAvailable} onChange={handleChange} className="h-4 w-4 text-blue-600 border-gray-300 rounded" />
+                <label className="ml-2 block text-sm text-gray-900">Available</label>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">{car ? 'Update' : 'Create'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }

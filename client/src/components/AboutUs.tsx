@@ -7,10 +7,10 @@ const AboutUs: React.FC = () => {
       <Header />
       <section className="py-16 px-4 md:px-10 lg:px-32 bg-gray-50 mt-12">
         <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">
-          About Tealo Car Rental
+          About MiRide
         </h2>
         <p className="text-lg text-gray-700 text-center max-w-3xl mx-auto mb-10">
-          Tealo Car Rental Service is your trusted companion for affordable and
+          MiRide is your trusted companion for affordable and
           reliable transportation. We offer a fleet of modern, well-maintained
           vehicles to meet your travel needs—whether for personal, business, or
           leisure.

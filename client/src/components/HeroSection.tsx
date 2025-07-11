@@ -10,10 +10,10 @@ const HeroSection: React.FC = () => {
         {/* Text Section */}
         <div>
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            Welcome to <span className="text-blue-600">Tealo Car Rental Service</span>
+            Welcome to <span className="text-blue-600">MiRide</span>
           </h1>
           <p className="text-lg text-gray-700 mb-6">
-            Affordable, reliable, and flexible car rental service for your personal and business needs. Whether you're traveling around town or heading to the countryside, Tealo has the perfect ride for you.
+            Affordable, reliable, and flexible car rental service for your personal and business needs. Whether you're traveling around town or heading to the countryside, MiRide has the perfect ride for you.
           </p>
           <ul className="space-y-2 mb-8">
             <li className="flex items-center text-gray-800">

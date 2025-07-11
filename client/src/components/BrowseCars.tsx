@@ -41,7 +41,7 @@ const BrowseCars: React.FC = () => {
   const [cars, setCars] = useState<Car[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [tab, setTab] = useState<Tab>("available");
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const { width, height } = useWindowSize();
@@ -51,7 +51,7 @@ const BrowseCars: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, [user, isAuthenticated]); // Add isAuthenticated to dependencies
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -74,7 +74,7 @@ const BrowseCars: React.FC = () => {
   };
 
   const handleRentCar = async (carId: number) => {
-    if (!user || !user.id) {
+    if (!user || user.id === 0) {
       setShowLoginModal(true);
       return;
     }
@@ -121,9 +121,9 @@ const BrowseCars: React.FC = () => {
   const rentedCars = isAuthenticated
     ? cars.filter((car) => !car.isAvailable)
     : [];
-  const userRentals = rentals.filter(
-    (rental) => rental.customerId === user?.id
-  );
+  const userRentals = user ? rentals.filter(
+    (rental) => rental.customerId === user.id
+  ) : [];
 
   return (
     <>

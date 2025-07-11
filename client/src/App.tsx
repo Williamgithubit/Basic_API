@@ -2,20 +2,23 @@ import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import Header from './components/Header';
 
 // Lazy load components
 const Login = lazy(() => import('./components/Login'));
 const Signup = lazy(() => import('./components/Signup'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
+const DashboardRouter = lazy(() => import('./components/DashboardRouter'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'));
+const RoleProtectedRoute = lazy(() => import('./components/RoleProtectedRoute'));
 const Home = lazy(() => import('./pages/Home'));
 const BrowseCars = lazy(() => import('./components/BrowseCars'));
-const AboutUs = lazy(() => import('./components/AboutUs'));
-const Contact = lazy(() => import('./components/Contact'));
-const RentalsPage = lazy(() => import('./pages/RentalsPage'));
-const TestPage = lazy(() => import('./pages/TestPage'));
+const RoleTest = lazy(() => import('./components/RoleTest'));
 
-
+// Lazy load dashboard components
+const CustomerDashboard = lazy(() => import('./components/dashboards/CustomerDashboard'));
+const OwnerDashboard = lazy(() => import('./components/dashboards/OwnerDashboard'));
+const AdminDashboard = lazy(() => import('./components/dashboards/AdminDashboard'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -25,38 +28,55 @@ const LoadingFallback = () => (
 );
 
 const AppContent: React.FC = () => {
-  const { isInitialized, isAuthenticated } = useAuth();
-  console.log('AppContent rendering', { isInitialized, isAuthenticated });
-
-  if (!isInitialized) {
-    console.log('App not initialized, showing loading...');
-    return <LoadingFallback />;
-  }
+  const { isAuthenticated } = useAuth();
+  console.log('AppContent rendering', { isAuthenticated });
 
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        
+        {/* Legacy dashboard route - redirects to role-specific dashboard */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardRouter />
             </ProtectedRoute>
           }
         />
-        <Route path="/rentals" element={
-          <ProtectedRoute>
-            <RentalsPage />
-          </ProtectedRoute>
-        } />
+        
+        {/* Role-specific dashboard routes */}
+        <Route
+          path="/dashboard/customer"
+          element={
+            <RoleProtectedRoute allowedRoles={['customer']}>
+              <CustomerDashboard />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/owner"
+          element={
+            <RoleProtectedRoute allowedRoles={['owner']}>
+              <OwnerDashboard />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin"
+          element={
+            <RoleProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </RoleProtectedRoute>
+          }
+        />
+        
         <Route path="/" element={<Home />} />
         <Route path="/cars" element={<BrowseCars />} />
-        <Route path="/about" element={<AboutUs />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/test" element={<TestPage />} />
-        <Route path="*" element={<Navigate to="/test" replace />} />
+        <Route path="/role-test" element={<ProtectedRoute><RoleTest /></ProtectedRoute>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );
@@ -68,15 +88,12 @@ const App: React.FC = () => {
   
   console.log('Rendering App component');
   return (
-    <div className="app-container" style={{ padding: '20px' }}>
+    <div className="app-container" style={{ padding: '0', width: '100%' }}>
       {!isAuthPage && (
-        <nav style={{ marginBottom: '20px', padding: '10px', background: '#f0f0f0', borderRadius: '4px' }}>
-          <Link to="/" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Home</Link> | 
-          <Link to="/cars" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Cars</Link> | 
-          <Link to="/about" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>About</Link> | 
-          <Link to="/contact" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Contact</Link> |
-          <Link to="/test" style={{ margin: '0 10px', textDecoration: 'none', color: '#333' }}>Test Page</Link>
-        </nav>
+        <>
+          <Header />
+        </>
+       
       )}
       <AppContent />
       <Toaster position="top-center" />
