@@ -1,13 +1,18 @@
 // client/src/services/api.ts
 import axios from 'axios';
+// Import error handler utility
+import errorHandler from '../utils/errorHandler';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://car-rental-service-ix4n.onrender.com/api';
 console.log('API Base URL:', API_BASE_URL);
+
 const axiosInstance = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
 });
+
 // ✅ Token setter
 export const setAuthToken = (token) => {
     if (token) {
@@ -17,37 +22,50 @@ export const setAuthToken = (token) => {
         delete axiosInstance.defaults.headers.common['Authorization'];
     }
 };
+
 // ✅ Interceptor with type-safe generic
 axiosInstance.interceptors.response.use((response) => response.data, (error) => {
-    console.error('API Error:', error);
+    // Log the request URL that caused the error
+    const requestUrl = error.config?.url || 'unknown URL';
+    console.log(`API Error on request to ${requestUrl}:`, error.message);
+    
+    // Get detailed error information
     const message = error.response?.data?.error ||
         error.response?.data?.message ||
         'Server error';
+    
     // Handle authentication errors
     if (error.response?.status === 401) {
         console.log('Authentication error detected:', message);
+        
         // If it's not a login/signup request that failed
-        const isAuthRequest = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/signup');
+        const isAuthRequest = error.config?.url?.includes('/auth/login') || 
+                             error.config?.url?.includes('/auth/signup') || 
+                             error.config?.url?.includes('/auth/register');
+        
         if (!isAuthRequest) {
-            console.log('Non-auth request failed with 401, clearing token');
-            // Clear token from localStorage
-            localStorage.removeItem('token');
-            // Clear auth header
-            delete axiosInstance.defaults.headers.common['Authorization'];
-            // Redirect to login page if we're in a browser environment
-            if (typeof window !== 'undefined') {
-                window.location.href = '/login';
+            // Use our error handler to determine if this is a critical auth error
+            if (errorHandler.isAuthError(error)) {
+                console.log('Critical auth error detected, handling with errorHandler');
+                errorHandler.handleApiError(error, true); // true = should logout
+            } else {
+                console.log('Non-critical 401 error, not clearing token');
             }
         }
+        
         throw new Error(message);
     }
+    
+    // Handle other error types
     if (error.response) {
         throw new Error(message);
     }
     else if (error.request) {
+        console.log('No response received from server');
         throw new Error('No response from server');
     }
     else {
+        console.log('Error setting up request');
         throw new Error('Error setting up request');
     }
 });
