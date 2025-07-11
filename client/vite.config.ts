@@ -17,24 +17,32 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000, // Set chunk size warning limit to 2000 kB
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            // Group react and react-dom together
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'react';
-            }
-            // Group UI libraries
-            if (id.includes('react-hot-toast') || id.includes('react-toastify') || id.includes('react-modal')) {
-              return 'ui';
-            }
-            // Group other heavy dependencies
-            if (id.includes('axios') || id.includes('react-confetti') || id.includes('framer-motion')) {
-              return 'vendor';
-            }
-            // Default chunking for other node_modules
-            return 'vendor';
-          }
-        },
+        manualChunks: {
+          // Put React and related packages in a separate chunk
+          'react-vendor': [
+            'react',
+            'react-dom',
+            'react-router-dom',
+            'react-router',
+            '@remix-run/router'
+          ],
+          // UI libraries in a separate chunk
+          'ui-vendor': [
+            'react-hot-toast',
+            'react-toastify',
+            'react-modal',
+            '@headlessui/react',
+            '@mui/material',
+            '@mui/icons-material',
+            '@emotion/react',
+            '@emotion/styled'
+          ],
+          // Data fetching and state management
+          'data-vendor': [
+            'axios',
+            '@tanstack/react-query'
+          ]
+        }
       },
     },
   },
