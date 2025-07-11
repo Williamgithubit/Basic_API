@@ -23,8 +23,7 @@ export default defineConfig({
             'react',
             'react-dom',
             'react-router-dom',
-            'react-router',
-            '@remix-run/router'
+            'react-router'
           ],
           // UI libraries in a separate chunk
           'ui-vendor': [
