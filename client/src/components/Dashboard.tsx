@@ -1,10 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
-import type { Car, Rental } from "../services/api";
+import { Car } from "../store/Car/carApi";
+import { Rental } from "../store/Rental/rentalApi";
 import CarList from "./CarList";
 import RentalList from "./RentalList";
 import Navbar from "./Navbar";
+import useCars from "../store/hooks/useCars";
+import useRentals from "../store/hooks/useRentals";
+import { toast } from "react-toastify";
+
+// Import CarCardProps type from CarList or define it here
+type CarCardProps = Car & {
+  isLiked: boolean;
+  isAvailable: boolean;
+  imageUrl: string;
+  name: string;
+  brand: string;
+  model: string;
+  year: number;
+  seats: number;
+  fuelType: 'Petrol' | 'Electric' | 'Hybrid';
+  location: string;
+  features: string[];
+  rating: number;
+  reviews: number;
+  rentalPricePerDay: number;
+  description: string;
+};
 
 
 type Tab = "cars" | "rentals";
@@ -16,41 +38,85 @@ type Message = {
 
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>("cars");
-  const [cars, setCars] = useState<Car[]>([]);
+  const [cars, setCars] = useState<CarCardProps[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<Message | null>(null);
   const { user } = useAuth();
 
+  // Use Redux hooks for cars and rentals
+  const { cars: carData, isLoading: isLoadingCars, error: carsError } = useCars();
+  const { rentals: rentalData, isLoading: isLoadingRentals, error: rentalsError, addRental } = useRentals();
+  
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [carsData, rentalsData] = await Promise.all([
-        api.cars.getAll(),
-        api.rentals.getAll(),
-      ]);
-      setCars(carsData);
-      setRentals(rentalsData);
-    } catch (error) {
+    // Set cars and rentals from Redux state
+    if (carData) {
+      // Map Car data to match CarCardProps expected by CarList
+      const mappedCars = carData.map(car => ({
+        ...car,
+        isLiked: false, // This will be updated by the CarList component
+        isAvailable: car.isAvailable,
+        imageUrl: car.imageUrl || 'https://via.placeholder.com/300x200?text=No+Image', // Provide default image URL
+        name: car.name, // Map make to name
+        brand: car.brand,
+        model: car.model,
+        year: car.year,
+        seats: 5, // Default value
+        fuelType: 'Petrol' as 'Petrol' | 'Electric' | 'Hybrid', // Default value
+        location: 'Local', // Default value
+        features: [], // Default value
+        rating: 4.5, // Default value
+        reviews: 10, // Default value
+        rentalPricePerDay: car.dailyRate,
+        description: `${car.name} ${car.model} ${car.year}`, // Generate description
+      }));
+      setCars(mappedCars);
+    }
+    
+    if (rentalData) {
+      setRentals(rentalData);
+    }
+    
+    // Show error toasts if needed
+    if (carsError) {
+      toast.error("Failed to fetch car data");
       setMessage({
-        text: "Failed to fetch data",
+        text: "Failed to fetch car data",
         type: "error",
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
+    
+    if (rentalsError) {
+      toast.error("Failed to fetch rental data");
+      setMessage({
+        text: "Failed to fetch rental data",
+        type: "error",
+      });
+    }
+  }, [carData, rentalData, carsError, rentalsError]);
+  
+  // Update loading state based on Redux loading states
+  useEffect(() => {
+    setIsLoading(isLoadingCars || isLoadingRentals);
+  }, [isLoadingCars, isLoadingRentals]);
 
 const handleRentCar = async (carId: number) => {
   if (!user) {
+    toast.error('Please log in to rent a car');
     setMessage({
       text: 'Please log in to rent a car',
       type: 'error'
     });
+    return;
+  }
+
+  // Check if user has already rented this car
+  const hasAlreadyRented = rentalData?.some(
+    (rental: Rental) => rental.carId === carId && rental.customerId === user.id
+  );
+
+  if (hasAlreadyRented) {
+    toast.error("You have already rented this car.");
     return;
   }
 
@@ -59,29 +125,26 @@ const handleRentCar = async (carId: number) => {
   const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days later
 
   try {
-    const rental = await api.rentals.create({
+    // Use the addRental function from useRentals hook
+    const { addRental } = useRentals();
+    
+    await addRental({
       carId,
       customerId: user.id,
       startDate: startDate.toISOString().split('T')[0],
       endDate: endDate.toISOString().split('T')[0]
     });
-
-    // Update the rentals list
-    setRentals(prev => [...prev, rental]);
     
-    // Update the car's availability
-    setCars(prev => 
-      prev.map(car => 
-        car.id === carId ? { ...car, isAvailable: false } : car
-      )
-    );
+    // No need to manually update state as Redux will handle it
     
+    toast.success('Car rented successfully');
     setMessage({
       text: 'Car rented successfully',
       type: 'success'
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to rent car';
+    toast.error(errorMessage);
     setMessage({
       text: errorMessage,
       type: 'error'
@@ -93,18 +156,23 @@ const handleRentCar = async (carId: number) => {
 
   const handleCancelRental = async (rentalId: number) => {
     try {
-      await api.rentals.delete(rentalId);
-      setRentals((prev) => prev.filter((r) => r.id !== rentalId));
-      const carsData = await api.cars.getAll();
-      setCars(carsData);
+      // Use the cancelRentalById function from useRentals hook
+      const { cancelRentalById } = useRentals();
+      
+      await cancelRentalById(rentalId);
+      
+      // No need to manually update state as Redux will handle it
+      
+      toast.success("Rental cancelled successfully");
       setMessage({
         text: "Rental cancelled successfully",
         type: "success",
       });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to cancel rental";
+      toast.error(errorMessage);
       setMessage({
-        text:
-          error instanceof Error ? error.message : "Failed to cancel rental",
+        text: errorMessage,
         type: "error",
       });
     }
@@ -183,7 +251,7 @@ const handleRentCar = async (carId: number) => {
 
         {activeTab === "cars" ? (
           <CarList
-            cars={cars}
+            cars={cars} /* cars is already mapped to CarCardProps[] in the useEffect */
             onRentCar={handleRentCar}
             isLoading={isLoading}
           />

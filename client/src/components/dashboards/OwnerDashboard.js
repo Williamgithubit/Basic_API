@@ -1,6 +1,9 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import useReduxAuth from '../../store/hooks/useReduxAuth';
+// No need for these types as they're defined in the Redux store
+// type UserType = { id: number; name: string; email: string; role: string; };
+// type AuthContextType = { user: UserType | null; login: (email: string, password: string) => Promise<void>; logout: () => void; };
 import { Box, Typography, Paper, List, ListItemButton, ListItemIcon, ListItemText, Button, Divider, Chip, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Stack, Card, CardContent, TextField, MenuItem } from '@mui/material';
 import { Grid as MuiGrid } from "@mui/material";
 // Create a wrapper component for Grid that works with Material UI v5
@@ -19,7 +22,7 @@ const sidebarItems = [
     { id: 'analytics', label: 'Analytics', icon: _jsx(Notifications, {}) }
 ];
 const OwnerDashboard = () => {
-    const auth = useAuth();
+    const auth = useReduxAuth();
     const { user } = auth;
     const [activeSection, setActiveSection] = useState('listings');
     // Function to render main content based on active section

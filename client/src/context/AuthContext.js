@@ -2,19 +2,24 @@ import { jsx as _jsx } from "react/jsx-runtime";
 // client/src/context/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
+// Use dynamic import for tokenStorage
+// @ts-ignore - Ignore the import error, we'll handle the type safety
+import * as tokenStorageModule from '../utils/tokenStorage';
+const tokenStorage = tokenStorageModule.default;
 const AuthContext = createContext(undefined);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     useEffect(() => {
+        // Initialize token from storage when component mounts
+        tokenStorage.initializeFromStorage();
         const checkAuth = async () => {
             try {
-                const token = localStorage.getItem('token');
-                console.log('Token from localStorage:', token ? 'Token exists' : 'No token found');
+                const token = tokenStorage.getToken();
+                console.log('Token from storage:', token ? 'Token exists' : 'No token found');
                 if (token) {
-                    // Set the token in the API service
-                    api.setAuthToken(token);
                     try {
+                        console.log('Attempting to authenticate with API...');
                         const response = await api.auth.getMe();
                         console.log('Authentication successful');
                         setUser({
@@ -27,26 +32,51 @@ export const AuthProvider = ({ children }) => {
                     }
                     catch (apiError) {
                         console.error('API Error during authentication check:', apiError);
-                        // Check if token is expired or invalid
-                        if (apiError.message === 'Invalid token' || apiError.message === 'Token expired') {
-                            console.log('Token is invalid or expired, attempting to refresh...');
-                            // For now, just log out the user
-                            localStorage.removeItem('token');
-                            api.setAuthToken(null);
+                        console.log('API Error details:', apiError.message);
+                        // Only logout for specific authentication errors
+                        const authErrorMessages = [
+                            'Invalid token', 'Token expired', 'jwt expired',
+                            'jwt malformed', 'invalid signature', 'unauthorized'
+                        ];
+                        const isAuthError = authErrorMessages.some(msg => apiError.message.toLowerCase().includes(msg.toLowerCase()));
+                        if (isAuthError) {
+                            console.log('Authentication error detected, logging out user');
+                            tokenStorage.removeToken();
                             setUser(null);
                         }
                         else {
-                            // For other errors, keep the token but log the error
-                            console.error('Other API error:', apiError.message);
+                            // For other errors, keep the token and user logged in if possible
+                            console.log('Non-authentication API error, keeping user session if possible');
+                            // If we already have user data, don't clear it for non-auth errors
+                            if (user) {
+                                console.log('Keeping existing user session active');
+                            }
+                            else {
+                                // Try to recover the session from localStorage if possible
+                                const savedUser = localStorage.getItem('user');
+                                if (savedUser) {
+                                    try {
+                                        const parsedUser = JSON.parse(savedUser);
+                                        console.log('Recovered user session from localStorage');
+                                        setUser(parsedUser);
+                                    }
+                                    catch (parseError) {
+                                        console.error('Failed to parse saved user data', parseError);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
             catch (error) {
                 console.error('Auth check failed', error);
-                localStorage.removeItem('token');
-                api.setAuthToken(null); // Clear the token in the API service
-                setUser(null);
+                // Only clear token for critical errors
+                if (error instanceof Error &&
+                    (error.message.includes('token') || error.message.includes('auth') || error.message.includes('jwt'))) {
+                    tokenStorage.removeToken();
+                    setUser(null);
+                }
             }
             finally {
                 setIsLoading(false);
@@ -74,16 +104,24 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.auth.login({ email, password });
             const { token, user } = response;
-            localStorage.setItem('token', token);
-            // Set the token in the API service
-            api.setAuthToken(token);
-            setUser({
+            // Store token using our utility
+            tokenStorage.setToken(token);
+            // Store user data in state and localStorage for recovery if needed
+            const userData = {
                 id: user.id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
                 phone: user.phone,
-            });
+            };
+            setUser(userData);
+            // Save user data to localStorage as backup
+            try {
+                localStorage.setItem('user', JSON.stringify(userData));
+            }
+            catch (storageError) {
+                console.warn('Could not save user data to localStorage', storageError);
+            }
         }
         catch (error) {
             console.error('Login failed', error);
@@ -94,16 +132,24 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.auth.signup(data);
             const { token, user } = response;
-            localStorage.setItem('token', token);
-            // Set the token in the API service
-            api.setAuthToken(token);
-            setUser({
+            // Store token using our utility
+            tokenStorage.setToken(token);
+            // Store user data in state and localStorage for recovery if needed
+            const userData = {
                 id: user.id,
                 name: user.name,
                 email: user.email,
                 role: user.role,
                 phone: user.phone,
-            });
+            };
+            setUser(userData);
+            // Save user data to localStorage as backup
+            try {
+                localStorage.setItem('user', JSON.stringify(userData));
+            }
+            catch (storageError) {
+                console.warn('Could not save user data to localStorage', storageError);
+            }
             return user;
         }
         catch (error) {
@@ -112,9 +158,16 @@ export const AuthProvider = ({ children }) => {
         }
     };
     const logout = () => {
-        localStorage.removeItem('token');
-        api.setAuthToken(null); // Clear the token in the API service
+        // Remove token using our utility
+        tokenStorage.removeToken();
+        // Clear user data from state and localStorage
         setUser(null);
+        try {
+            localStorage.removeItem('user');
+        }
+        catch (storageError) {
+            console.warn('Could not remove user data from localStorage', storageError);
+        }
     };
     const value = {
         user,

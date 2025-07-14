@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import useCars from "../store/hooks/useCars";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 const formatPrice = (price) => {
@@ -11,12 +12,16 @@ const formatPrice = (price) => {
         maximumFractionDigits: 2,
     }).format(price || 0);
 };
-import api from '../services/api';
-const CarList = ({ cars = [], onRentCar, isLoading = false }) => {
+// Using Redux hooks instead of direct API import
+const CarList = ({ cars = [], onRentCar, isLoading: propIsLoading = false }) => {
     const [loadingCarId, setLoadingCarId] = useState(null);
     const [imageErrors, setImageErrors] = useState({});
     const [likedCars, setLikedCars] = useState({});
     const { isAuthenticated } = useAuth();
+    // Use the Redux hooks
+    const { toggleLikeCar, isLoading: reduxIsLoading } = useCars();
+    // Combine loading states
+    const isLoading = propIsLoading || reduxIsLoading;
     const handleImageError = (carId) => {
         setImageErrors(prev => ({
             ...prev,
@@ -35,8 +40,8 @@ const CarList = ({ cars = [], onRentCar, isLoading = false }) => {
                 ...prev,
                 [carId]: !(prev[carId] ?? false)
             }));
-            // Call the API to toggle like
-            const response = await api.cars.toggleLike(carId);
+            // Call the Redux action to toggle like
+            const response = await toggleLikeCar(carId);
             // Update with actual server state
             setLikedCars(prev => ({
                 ...prev,

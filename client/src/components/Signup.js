@@ -1,8 +1,9 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import useReduxAuth from '../store/hooks/useReduxAuth';
 const Signup = () => {
     const [formData, setFormData] = useState({
         name: '',
@@ -14,36 +15,43 @@ const Signup = () => {
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const navigate = useNavigate();
-    const { signup } = useAuth();
+    // Use Redux auth hook instead of context
+    const { register, isLoading: loading, error: reduxError } = useReduxAuth();
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
     const handleRoleChange = (role) => {
         setFormData({ ...formData, role });
     };
+    // Update error state when Redux error changes
+    useEffect(() => {
+        if (reduxError) {
+            setError(reduxError);
+        }
+    }, [reduxError]);
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
+            toast.error('Passwords do not match');
             return;
         }
-        setLoading(true);
         try {
-            await signup({
-                name: formData.name,
+            // Map the form data to match the RegisterData interface expected by the register function
+            await register({
+                firstName: formData.name, // Map name to firstName
+                lastName: '', // Provide a default value for lastName
                 email: formData.email,
-                phone: formData.phone,
                 password: formData.password,
-                role: formData.role,
             });
-            // Show success message
+            // Show success message and toast
             setSuccess('Account created successfully! Redirecting to login page...');
+            toast.success('Account created successfully!');
             // Redirect to login page after a short delay
             setTimeout(() => {
                 navigate('/login', {
@@ -55,10 +63,9 @@ const Signup = () => {
             }, 2000);
         }
         catch (err) {
-            setError(err.message || 'Signup failed');
-        }
-        finally {
-            setLoading(false);
+            // Show error toast
+            toast.error(err instanceof Error ? err.message : 'Registration failed');
+            // Error is already handled by the Redux hook and displayed via the error state
         }
     };
     return (_jsxs("div", { className: "min-h-screen flex", children: [_jsxs("div", { className: "hidden lg:flex flex-col justify-center items-center w-1/2 bg-blue-700 text-white relative", children: [_jsx("div", { className: "absolute inset-0 bg-black opacity-30 z-10" }), _jsxs("div", { className: "z-20 p-10 text-center", children: [_jsx("h2", { className: "text-4xl font-bold mb-4", children: "Join Our Car Rental Platform" }), _jsx("p", { className: "text-lg", children: "Rent or list cars easily with secure transactions." })] })] }), _jsx("div", { className: "flex flex-col justify-center items-center w-full lg:w-1/2 p-8 bg-gray-100", children: _jsxs("div", { className: "max-w-md w-full bg-white rounded-2xl shadow-md p-8", children: [_jsx("h2", { className: "text-3xl font-bold text-center text-blue-600 mb-6", children: "Create Your Account" }), error && (_jsx("div", { className: "bg-red-100 text-red-700 px-4 py-2 rounded mb-4 text-sm", children: error })), success && (_jsx("div", { className: "bg-green-100 text-green-700 px-4 py-2 rounded mb-4 text-sm", children: success })), _jsxs("div", { className: "space-y-2", children: [_jsx("label", { className: "text-sm font-medium", children: "I want to:" }), _jsxs("div", { className: "flex space-x-3", children: [_jsx("button", { type: "button", onClick: () => handleRoleChange('customer'), className: `flex-1 py-2 rounded-md font-medium transition ${formData.role === 'customer'

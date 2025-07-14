@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import useReduxAuth from '../store/hooks/useReduxAuth';
 import CustomerDashboard from './dashboards/CustomerDashboard';
 import OwnerDashboard from './dashboards/OwnerDashboard';
 import AdminDashboard from './dashboards/AdminDashboard';
@@ -10,7 +10,8 @@ interface DashboardRouterProps {
 }
 
 const DashboardRouter: React.FC<DashboardRouterProps> = ({ role }) => {
-  const { user, isLoading } = useAuth();
+  // Use Redux auth hook instead of context
+  const { user, isLoading } = useReduxAuth();
   
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">

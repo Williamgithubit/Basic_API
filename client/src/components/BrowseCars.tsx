@@ -1,14 +1,16 @@
 import React, { useEffect, useState, Suspense } from "react";
 import CarList from "./CarList";
-import type { Car } from "../services/api";
+import { Car } from "../store/Car/carApi";
+import { Rental } from "../store/Rental/rentalApi";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Header from "./Header";
 import toast from "react-hot-toast";
-import api from "../services/api";
-import type { Rental } from "../services/api";
 import Modal from "react-modal";
 import Confetti from "react-confetti";
+import { useAppDispatch } from "../store/hooks";
+import useCars from "../store/hooks/useCars";
+import useRentals from "../store/hooks/useRentals";
 
 // Custom hook to get window size
 const useWindowSize = () => {
@@ -49,38 +51,66 @@ const BrowseCars: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
 
+  // Use Redux hooks for cars and rentals
+  const { cars: carData, isLoading: isLoadingCars, error: carsError } = useCars();
+  const { rentals: rentalData, isLoading: isLoadingRentals, error: rentalsError, addRental } = useRentals();
+  
   useEffect(() => {
-    fetchData();
-  }, [user, isAuthenticated]); // Add isAuthenticated to dependencies
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const carsData = await api.cars.getAll();
-      setCars(carsData);
-
-      if (isAuthenticated) {
-        const rentalsData = await api.rentals.getAll();
-        setRentals(rentalsData);
-      } else {
-        setRentals([]);
-      }
-    } catch (error) {
-      toast.error("Failed to fetch car data");
-      if (error instanceof Error) console.error(error.message);
-    } finally {
-      setIsLoading(false);
+    // Set cars and rentals from Redux state
+    if (carData) {
+      // Map Car data to match CarCardProps expected by CarList
+      const mappedCars = carData.map(car => ({
+        ...car,
+        isLiked: false, // This will be updated by the CarList component
+        isAvailable: car.isAvailable,
+        name: car.name, // Map make to name
+        brand: car.brand,
+        model: car.model,
+        year: car.year,
+        seats: 5, // Default value
+        fuelType: 'Petrol' as 'Petrol' | 'Electric' | 'Hybrid', // Default value
+        location: 'Local', // Default value
+        features: [], // Default value
+        rating: 4.5, // Default value
+        reviews: 10, // Default value
+        rentalPricePerDay: car.dailyRate,
+        description: `${car.name} ${car.model} ${car.year}`, // Generate description
+      }));
+      setCars(mappedCars);
     }
-  };
+    
+    if (isAuthenticated && rentalData) {
+      setRentals(rentalData);
+    } else {
+      setRentals([]);
+    }
+    
+    // Show error toasts if needed
+    if (carsError) {
+      toast.error("Failed to fetch car data");
+      console.error(carsError);
+    }
+    
+    if (rentalsError) {
+      toast.error("Failed to fetch rental data");
+      console.error(rentalsError);
+    }
+  }, [carData, rentalData, isAuthenticated, carsError, rentalsError]);
+  
+  // Update loading state based on Redux loading states
+  useEffect(() => {
+    setIsLoading(isLoadingCars || isLoadingRentals);
+  }, [isLoadingCars, isLoadingRentals]);
 
   const handleRentCar = async (carId: number) => {
     if (!user || user.id === 0) {
       setShowLoginModal(true);
       return;
     }
-
-    const hasAlreadyRented = rentals.some(
-      (rental) => rental.carId === carId && rental.customerId === user.id
+    
+    // Check if user has already rented this car
+    const hasAlreadyRented = rentalData?.some(
+      (rental: Rental) => rental.carId === carId && rental.customerId === user.id
     );
 
     if (hasAlreadyRented) {
@@ -93,33 +123,48 @@ const BrowseCars: React.FC = () => {
     const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     try {
-      const rental = await api.rentals.create({
+      // Use the addRental function from useRentals hook
+      const rental = await addRental({
         carId,
         customerId: user.id,
         startDate: startDate.toISOString().split("T")[0],
         endDate: endDate.toISOString().split("T")[0],
       });
 
-      setRentals((prev) => [...prev, rental]);
-      setCars((prev) =>
-        prev.map((car) =>
-          car.id === carId ? { ...car, isAvailable: false } : car
-        )
-      );
-
-      toast.success("Car rented successfully");
       setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
+      setTimeout(() => setShowConfetti(false), 5000);
+
+      toast.success("Car rented successfully!");
     } catch (error) {
       toast.error("Failed to rent car");
-      if (error instanceof Error) console.error(error.message);
-      throw error;
+      console.error(error);
     }
   };
 
-  const availableCars = cars.filter((car) => car.isAvailable);
+  // Map Car objects to CarCardProps objects
+  const mapCarToCardProps = (car: Car) => {
+    return {
+      ...car,
+      isLiked: false, // Default value, update if you have this info
+      isAvailable: car.isAvailable,
+      imageUrl: car.imageUrl || 'https://via.placeholder.com/300x200?text=Car+Image', // Ensure imageUrl is always a string
+      name: car.model, // Using model as name
+      brand: car.name, // Using make as brand
+      seats: 4, // Default value
+      fuelType: 'Petrol' as 'Petrol' | 'Electric' | 'Hybrid', // Default value
+      location: 'Local', // Default value
+      features: [], // Default value
+      rating: 4.5, // Default value
+      reviews: 10, // Default value
+      rentalPricePerDay: car.dailyRate, // Using dailyRate
+      description: `${car.year} ${car.name} ${car.model}` // Generated description
+    };
+  };
+
+  // Filter cars based on availability status
+  const availableCars = cars.filter((car) => car.isAvailable).map(mapCarToCardProps);
   const rentedCars = isAuthenticated
-    ? cars.filter((car) => !car.isAvailable)
+    ? cars.filter((car) => !car.isAvailable).map(mapCarToCardProps)
     : [];
   const userRentals = user ? rentals.filter(
     (rental) => rental.customerId === user.id

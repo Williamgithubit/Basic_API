@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import type { Car } from "../services/api";
+import { Car } from "../store/Car/carApi";
+import { useAppDispatch } from "../store/hooks";
+import useCars from "../store/hooks/useCars";
 
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+ 
 // CarCardProps extends the Car interface and ensures required fields are present
 type CarCardProps = Car & {
   // Ensure required fields have the correct types
@@ -38,15 +40,23 @@ interface CarListProps {
   cars: CarCardProps[];
   onRentCar: (carId: number) => Promise<void>;
   isLoading?: boolean;
+  // Note: In a full migration, we would remove the cars prop and fetch directly from Redux
+  // This partial migration keeps the component API compatible with existing usage
 }
 
-import api from '../services/api';
+// Using Redux hooks instead of direct API import
 
-const CarList: React.FC<CarListProps> = ({ cars = [], onRentCar, isLoading = false }) => {
+const CarList: React.FC<CarListProps> = ({ cars = [], onRentCar, isLoading: propIsLoading = false }) => {
   const [loadingCarId, setLoadingCarId] = useState<number | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
   const [likedCars, setLikedCars] = useState<Record<number, boolean>>({});
   const { isAuthenticated } = useAuth();
+  
+  // Use the Redux hooks
+  const { toggleLikeCar, isLoading: reduxIsLoading } = useCars();
+  
+  // Combine loading states
+  const isLoading = propIsLoading || reduxIsLoading;
 
   const handleImageError = (carId: number) => {
     setImageErrors(prev => ({
@@ -54,7 +64,7 @@ const CarList: React.FC<CarListProps> = ({ cars = [], onRentCar, isLoading = fal
       [carId]: true
     }));
   };
-
+  
   const toggleLike = async (carId: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) {
@@ -69,8 +79,8 @@ const CarList: React.FC<CarListProps> = ({ cars = [], onRentCar, isLoading = fal
         [carId]: !(prev[carId] ?? false)
       }));
       
-      // Call the API to toggle like
-      const response = await api.cars.toggleLike(carId);
+      // Call the Redux action to toggle like
+      const response = await toggleLikeCar(carId);
       
       // Update with actual server state
       setLikedCars(prev => ({

@@ -1,7 +1,7 @@
 // client/src/services/api.ts
 import axios, { AxiosError, type AxiosResponse } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://car-rental-service-ix4n.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 console.log('API Base URL:', API_BASE_URL);
 
 const axiosInstance = axios.create({

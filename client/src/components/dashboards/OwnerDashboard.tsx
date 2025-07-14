@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-type UserType = { id: number; name: string; email: string; role: string; };
-type AuthContextType = { user: UserType | null; login: (email: string, password: string) => Promise<void>; logout: () => void; };
+import useReduxAuth from '../../store/hooks/useReduxAuth';
+// No need for these types as they're defined in the Redux store
+// type UserType = { id: number; name: string; email: string; role: string; };
+// type AuthContextType = { user: UserType | null; login: (email: string, password: string) => Promise<void>; logout: () => void; };
 import {
   Box,
   Typography,
@@ -57,7 +58,7 @@ const sidebarItems = [
 ];
 
 const OwnerDashboard: React.FC = () => {
-  const auth = useAuth() as AuthContextType;
+  const auth = useReduxAuth();
   const { user } = auth;
   const [activeSection, setActiveSection] = useState('listings');
 

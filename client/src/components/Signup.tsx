@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import useReduxAuth from '../store/hooks/useReduxAuth';
 
 const Signup: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -15,11 +16,12 @@ const Signup: React.FC = () => {
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  
+  // Use Redux auth hook instead of context
+  const { register, isLoading: loading, error: reduxError } = useReduxAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -29,6 +31,13 @@ const Signup: React.FC = () => {
     setFormData({ ...formData, role });
   };
 
+  // Update error state when Redux error changes
+  useEffect(() => {
+    if (reduxError) {
+      setError(reduxError);
+    }
+  }, [reduxError]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -36,21 +45,22 @@ const Signup: React.FC = () => {
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
-    setLoading(true);
     try {
-      await signup({
-        name: formData.name,
+      // Map the form data to match the RegisterData interface expected by the register function
+      await register({
+        firstName: formData.name, // Map name to firstName
+        lastName: '', // Provide a default value for lastName
         email: formData.email,
-        phone: formData.phone,
         password: formData.password,
-        role: formData.role,
       });
       
-      // Show success message
+      // Show success message and toast
       setSuccess('Account created successfully! Redirecting to login page...');
+      toast.success('Account created successfully!');
       
       // Redirect to login page after a short delay
       setTimeout(() => {
@@ -63,9 +73,9 @@ const Signup: React.FC = () => {
       }, 2000);
       
     } catch (err: any) {
-      setError(err.message || 'Signup failed');
-    } finally {
-      setLoading(false);
+      // Show error toast
+      toast.error(err instanceof Error ? err.message : 'Registration failed');
+      // Error is already handled by the Redux hook and displayed via the error state
     }
   };
 

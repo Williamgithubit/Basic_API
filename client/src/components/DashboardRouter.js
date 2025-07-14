@@ -1,11 +1,12 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import useReduxAuth from '../store/hooks/useReduxAuth';
 import CustomerDashboard from './dashboards/CustomerDashboard';
 import OwnerDashboard from './dashboards/OwnerDashboard';
 import AdminDashboard from './dashboards/AdminDashboard';
 const DashboardRouter = ({ role }) => {
-    const { user, isLoading } = useAuth();
+    // Use Redux auth hook instead of context
+    const { user, isLoading } = useReduxAuth();
     if (isLoading) {
         return _jsx("div", { className: "flex justify-center items-center h-screen", children: _jsx("div", { className: "animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" }) });
     }

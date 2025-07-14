@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { type Rental } from "../services/api";
+import { Rental } from "../store/Rental/rentalApi";
 import { useAuth } from "../context/AuthContext";
+import { useAppDispatch } from "../store/hooks";
+import useRentals from "../store/hooks/useRentals";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -17,7 +19,7 @@ const RentalList: React.FC<RentalListProps> = ({
   rentals,
   onRentalDeleted,
   setMessage,
-  isLoading,
+  isLoading: propIsLoading,
 }) => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,12 +27,50 @@ const RentalList: React.FC<RentalListProps> = ({
   const [sortKey, setSortKey] = useState<"name" | "cost" | "date">("date");
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingRentalId, setDeletingRentalId] = useState<number | null>(null);
+  
+  // Use the Redux hooks for rentals
+  const { cancelRentalById, isLoading: isCancellingRental } = useRentals();
+  
+  // Combine loading states
+  const isLoading = propIsLoading || isCancellingRental;
+
+  // Define the handleDeleteRental function
+  const handleDeleteRental = async (rentalId: number) => {
+    if (!window.confirm("Are you sure you want to cancel this rental?")) {
+      return;
+    }
+
+    setDeletingRentalId(rentalId);
+    try {
+      // Use the Redux cancelRentalById function
+      await cancelRentalById(rentalId);
+      
+      // Still call the parent component's callback to maintain compatibility
+      if (onRentalDeleted) {
+        await onRentalDeleted(rentalId);
+      }
+      
+      toast.success("Rental cancelled successfully");
+      setMessage({
+        text: "Rental cancelled successfully",
+        type: "success",
+      });
+    } catch (error: any) {
+      toast.error("Failed to cancel rental");
+      setMessage({
+        text: error?.data?.message || "Failed to cancel rental",
+        type: "error",
+      });
+    } finally {
+      setDeletingRentalId(null);
+    }
+  };
 
   const filteredRentals = useMemo(() => {
     return rentals
       .filter((rental) => {
-        const carName = rental.Car?.name?.toLowerCase() || "";
-        const carModel = rental.Car?.model?.toLowerCase() || "";
+        const carName = rental.car?.name?.toLowerCase() || "";
+        const carModel = rental.car?.model?.toLowerCase() || "";
         const matchesSearch =
           carName.includes(searchTerm.toLowerCase()) ||
           carModel.includes(searchTerm.toLowerCase());
@@ -45,7 +85,7 @@ const RentalList: React.FC<RentalListProps> = ({
       })
       .sort((a, b) => {
         if (sortKey === "name") {
-          return (a.Car?.name || "").localeCompare(b.Car?.name || "");
+          return (a.car?.name || "").localeCompare(b.car?.name || "");
         } else if (sortKey === "cost") {
           return b.totalCost - a.totalCost;
         } else {
@@ -126,10 +166,10 @@ const RentalList: React.FC<RentalListProps> = ({
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h3 className="text-lg md:text-xl font-semibold text-gray-900">
-                            {rental.Car?.name ?? "Unnamed Car"}
+                            {rental.car?.name ?? "Unnamed Car"}
                           </h3>
                           <p className="text-gray-600 text-sm mt-1">
-                            Model: {rental.Car?.model ?? "Unknown"}
+                            Model: {rental.car?.model ?? "Unknown"}
                           </p>
                         </div>
                         <span
@@ -166,27 +206,7 @@ const RentalList: React.FC<RentalListProps> = ({
 
                       <div className="mt-4">
                         <button
-                          onClick={async () => {
-                            setDeletingRentalId(rental.id);
-                            try {
-                              await onRentalDeleted(rental.id);
-                              toast.success("Rental cancelled successfully");
-                              setMessage({
-                                text: "Rental cancelled successfully",
-                                type: "success",
-                              });
-                            } catch (error: any) {
-                              toast.error("Failed to cancel rental");
-                              setMessage({
-                                text:
-                                  error?.response?.data?.message ||
-                                  "Failed to cancel rental",
-                                type: "error",
-                              });
-                            } finally {
-                              setDeletingRentalId(null);
-                            }
-                          }}
+                          onClick={() => handleDeleteRental(rental.id)}
                           disabled={!canCancel || deletingRentalId === rental.id}
                           className={`w-full px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2 ${
                             canCancel && deletingRentalId === rental.id

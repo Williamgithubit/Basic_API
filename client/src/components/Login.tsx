@@ -1,9 +1,9 @@
 // Login.tsx
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import { toast } from "react-hot-toast";
+import { toast } from "react-toastify";
+import useReduxAuth from "../store/hooks/useReduxAuth";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -12,10 +12,11 @@ const Login: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Use Redux auth hook instead of context
+  const { login, isLoading: loading, error: reduxError } = useReduxAuth();
 
   useEffect(() => {
     const state = location.state as { message?: string; email?: string; redirectTo?: string } | null;
@@ -36,12 +37,19 @@ const Login: React.FC = () => {
     }
   }, [location]);
 
+  // Update error state when Redux error changes
+  useEffect(() => {
+    if (reduxError) {
+      setError(reduxError);
+    }
+  }, [reduxError]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
     try {
-      await login(email, password);
+      // Use the login function from Redux auth hook
+      await login({ email, password });
       
       // Handle remember me functionality
       if (rememberMe) {
@@ -50,14 +58,16 @@ const Login: React.FC = () => {
         localStorage.removeItem("rememberedEmail");
       }
       
+      // Show success toast using react-toastify
+      toast.success("Login successful!");
+      
       // Redirect to the intended URL or dashboard
       const redirectTo = (location.state as any)?.redirectTo || "/dashboard";
       navigate(redirectTo);
-      toast.success("Login successful!");
     } catch (err: any) {
-      setError(err.message || "Failed to login");
-    } finally {
-      setLoading(false);
+      // Show error toast using react-toastify
+      toast.error(err.message || "Failed to login");
+      // Error is already handled by the Redux hook and displayed via the error state
     }
   };
 

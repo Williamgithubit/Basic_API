@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import useReduxAuth from '../../store/hooks/useReduxAuth';
 import { Box, Typography, Container, Paper, List, ListItemButton, ListItemIcon, ListItemText, Button, Divider, Chip, TableContainer, Table, TableHead, TableBody, TableRow, TableCell, Stack } from '@mui/material';
 import { ListAlt, AccessTime, Edit, CreditCard, Star, Notifications, Person, Visibility, Cancel } from '@mui/icons-material';
 // Define the sidebar navigation items
@@ -14,8 +14,8 @@ const sidebarItems = [
     { id: 'profile', label: 'Profile & Preferences', icon: _jsx(Person, {}) }
 ];
 const CustomerDashboard = () => {
-    const auth = useAuth();
-    const { user } = auth;
+    // Use Redux auth hook instead of context
+    const { user } = useReduxAuth();
     const [activeSection, setActiveSection] = useState('bookings');
     // Placeholder content for each section
     const renderContent = () => {

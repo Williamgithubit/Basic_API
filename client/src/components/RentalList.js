@@ -1,21 +1,56 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useState, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
+import useRentals from "../store/hooks/useRentals";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 const ITEMS_PER_PAGE = 6;
-const RentalList = ({ rentals, onRentalDeleted, setMessage, isLoading, }) => {
+const RentalList = ({ rentals, onRentalDeleted, setMessage, isLoading: propIsLoading, }) => {
     const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [sortKey, setSortKey] = useState("date");
     const [currentPage, setCurrentPage] = useState(1);
     const [deletingRentalId, setDeletingRentalId] = useState(null);
+    // Use the Redux hooks for rentals
+    const { cancelRentalById, isLoading: isCancellingRental } = useRentals();
+    // Combine loading states
+    const isLoading = propIsLoading || isCancellingRental;
+    // Define the handleDeleteRental function
+    const handleDeleteRental = async (rentalId) => {
+        if (!window.confirm("Are you sure you want to cancel this rental?")) {
+            return;
+        }
+        setDeletingRentalId(rentalId);
+        try {
+            // Use the Redux cancelRentalById function
+            await cancelRentalById(rentalId);
+            // Still call the parent component's callback to maintain compatibility
+            if (onRentalDeleted) {
+                await onRentalDeleted(rentalId);
+            }
+            toast.success("Rental cancelled successfully");
+            setMessage({
+                text: "Rental cancelled successfully",
+                type: "success",
+            });
+        }
+        catch (error) {
+            toast.error("Failed to cancel rental");
+            setMessage({
+                text: error?.data?.message || "Failed to cancel rental",
+                type: "error",
+            });
+        }
+        finally {
+            setDeletingRentalId(null);
+        }
+    };
     const filteredRentals = useMemo(() => {
         return rentals
             .filter((rental) => {
-            const carName = rental.Car?.name?.toLowerCase() || "";
-            const carModel = rental.Car?.model?.toLowerCase() || "";
+            const carName = rental.car?.name?.toLowerCase() || "";
+            const carModel = rental.car?.model?.toLowerCase() || "";
             const matchesSearch = carName.includes(searchTerm.toLowerCase()) ||
                 carModel.includes(searchTerm.toLowerCase());
             const isExpired = new Date(rental.endDate) < new Date();
@@ -26,7 +61,7 @@ const RentalList = ({ rentals, onRentalDeleted, setMessage, isLoading, }) => {
         })
             .sort((a, b) => {
             if (sortKey === "name") {
-                return (a.Car?.name || "").localeCompare(b.Car?.name || "");
+                return (a.car?.name || "").localeCompare(b.car?.name || "");
             }
             else if (sortKey === "cost") {
                 return b.totalCost - a.totalCost;
@@ -45,30 +80,9 @@ const RentalList = ({ rentals, onRentalDeleted, setMessage, isLoading, }) => {
                             const isExpired = new Date(rental.endDate) < new Date();
                             const isOwner = rental.customerId === user?.id;
                             const canCancel = !isExpired && isOwner;
-                            return (_jsx("div", { className: "bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden", children: _jsx("div", { className: "p-4 md:p-6", children: _jsxs("div", { className: "flex flex-col h-full", children: [_jsxs("div", { className: "flex justify-between items-start mb-2", children: [_jsxs("div", { children: [_jsx("h3", { className: "text-lg md:text-xl font-semibold text-gray-900", children: rental.Car?.name ?? "Unnamed Car" }), _jsxs("p", { className: "text-gray-600 text-sm mt-1", children: ["Model: ", rental.Car?.model ?? "Unknown"] })] }), _jsx("span", { className: `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isExpired
+                            return (_jsx("div", { className: "bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden", children: _jsx("div", { className: "p-4 md:p-6", children: _jsxs("div", { className: "flex flex-col h-full", children: [_jsxs("div", { className: "flex justify-between items-start mb-2", children: [_jsxs("div", { children: [_jsx("h3", { className: "text-lg md:text-xl font-semibold text-gray-900", children: rental.car?.name ?? "Unnamed Car" }), _jsxs("p", { className: "text-gray-600 text-sm mt-1", children: ["Model: ", rental.car?.model ?? "Unknown"] })] }), _jsx("span", { className: `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isExpired
                                                             ? "bg-gray-100 text-gray-500"
-                                                            : "bg-green-100 text-green-800"}`, children: isExpired ? "Expired" : "Active" })] }), _jsxs("div", { className: "flex-grow", children: [_jsxs("div", { className: "flex justify-between items-center mb-2", children: [_jsx("span", { className: "text-sm text-gray-500", children: "Start Date:" }), _jsx("span", { className: "text-sm font-medium", children: rental.startDate })] }), _jsxs("div", { className: "flex justify-between items-center mb-4", children: [_jsx("span", { className: "text-sm text-gray-500", children: "End Date:" }), _jsx("span", { className: "text-sm font-medium", children: rental.endDate })] }), _jsxs("div", { className: "flex justify-between items-center mb-4 pt-2 border-t border-gray-100", children: [_jsx("span", { className: "text-gray-600", children: "Total Cost:" }), _jsxs("span", { className: "text-lg font-semibold text-blue-600", children: ["$", rental.totalCost] })] })] }), _jsx("div", { className: "mt-4", children: _jsxs("button", { onClick: async () => {
-                                                        setDeletingRentalId(rental.id);
-                                                        try {
-                                                            await onRentalDeleted(rental.id);
-                                                            toast.success("Rental cancelled successfully");
-                                                            setMessage({
-                                                                text: "Rental cancelled successfully",
-                                                                type: "success",
-                                                            });
-                                                        }
-                                                        catch (error) {
-                                                            toast.error("Failed to cancel rental");
-                                                            setMessage({
-                                                                text: error?.response?.data?.message ||
-                                                                    "Failed to cancel rental",
-                                                                type: "error",
-                                                            });
-                                                        }
-                                                        finally {
-                                                            setDeletingRentalId(null);
-                                                        }
-                                                    }, disabled: !canCancel || deletingRentalId === rental.id, className: `w-full px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2 ${canCancel && deletingRentalId === rental.id
+                                                            : "bg-green-100 text-green-800"}`, children: isExpired ? "Expired" : "Active" })] }), _jsxs("div", { className: "flex-grow", children: [_jsxs("div", { className: "flex justify-between items-center mb-2", children: [_jsx("span", { className: "text-sm text-gray-500", children: "Start Date:" }), _jsx("span", { className: "text-sm font-medium", children: rental.startDate })] }), _jsxs("div", { className: "flex justify-between items-center mb-4", children: [_jsx("span", { className: "text-sm text-gray-500", children: "End Date:" }), _jsx("span", { className: "text-sm font-medium", children: rental.endDate })] }), _jsxs("div", { className: "flex justify-between items-center mb-4 pt-2 border-t border-gray-100", children: [_jsx("span", { className: "text-gray-600", children: "Total Cost:" }), _jsxs("span", { className: "text-lg font-semibold text-blue-600", children: ["$", rental.totalCost] })] })] }), _jsx("div", { className: "mt-4", children: _jsxs("button", { onClick: () => handleDeleteRental(rental.id), disabled: !canCancel || deletingRentalId === rental.id, className: `w-full px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2 ${canCancel && deletingRentalId === rental.id
                                                         ? "bg-blue-400 text-white cursor-wait"
                                                         : !canCancel
                                                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"

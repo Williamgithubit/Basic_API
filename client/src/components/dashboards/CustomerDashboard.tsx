@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import useReduxAuth from '../../store/hooks/useReduxAuth';
 
 import {
   Box, 
@@ -45,8 +45,8 @@ const sidebarItems = [
 ];
 
 const CustomerDashboard: React.FC = () => {
-  const auth = useAuth();
-  const { user } = auth;
+  // Use Redux auth hook instead of context
+  const { user } = useReduxAuth();
   const [activeSection, setActiveSection] = useState('bookings');
 
   // Placeholder content for each section
